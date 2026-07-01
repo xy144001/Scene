@@ -1,0 +1,10 @@
+{
+  "aliases": {
+    "framed_landscape_art": "landscape_wall_art",
+    "left_window": "window",
+    "left_dresser_plant": "dresser_plant",
+    "left_stack_of_books": "dresser_books",
+    "right_stack_of_books": "right_nightstand_books",
+    "left_wall_botanical_print": "left_botanical_wall_art"
+  }
+}

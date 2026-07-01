@@ -1,0 +1,14 @@
+# Python 3.10 orchestration environment for sage/scripts/run_tree_sage_scene.py.
+numpy>=1.24
+pillow>=9.3
+trimesh>=4.0
+scipy>=1.10
+shapely>=2.0
+requests>=2.31
+opencv-python>=4.8
+matplotlib>=3.7
+transformers>=4.44
+torch>=2.5.1
+torchvision>=0.20.1
+mujoco==3.3.4
+

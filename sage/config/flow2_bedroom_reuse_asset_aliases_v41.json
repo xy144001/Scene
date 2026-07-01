@@ -1,0 +1,21 @@
+{
+  "schema": "tree_sage_asset_reuse_aliases_v1",
+  "scene": "bedroom_image_reference_v41",
+  "notes": [
+    "Target ids come from the fresh image-only v41 scene graph.",
+    "Source ids are validated cleaned assets from the previous bedroom run.",
+    "This file reuses assets only; scale remains governed by the autonomous reference-scale estimator when --no-reuse-scene-plan-scale-prior and --no-asset-metadata-scale-prior are used."
+  ],
+  "aliases": {
+    "queen_bed": "double_bed",
+    "right_dresser": "dresser",
+    "right_side_cabinet": "small_right_drawer_unit",
+    "left_potted_plant": "left_floor_plant",
+    "small_center_potted_plant": "center_small_plant",
+    "tall_right_potted_plant": "right_floor_plant",
+    "dresser_potted_plant": "dresser_tall_plant",
+    "small_round_dresser_plant": "center_small_plant",
+    "side_cabinet_potted_plant": "small_right_top_plant",
+    "front_black_throw_pillow": "black_pillow"
+  }
+}

@@ -1,0 +1,974 @@
+{
+  "schema": "tree_sage_flow2_experience_log_v1",
+  "upgrade_threshold": 3,
+  "policy": "Experience entries are advisory until occurrences reach the upgrade threshold. Deterministic code bugs may be fixed directly, but advisory entries should not be treated as hard constraints.",
+  "entries": [
+    {
+      "id": "window_sill_is_window_support_surface_not_asset",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_current_rerun_20260622_img0610_113657_reuse_assets_rebuild_tree_alias_fix_wall_support_twostage",
+      "observation": "A fresh image-only scene graph created a standalone window_sill object. The reuse asset library had no sill asset, and treating the sill as a separate GLB would duplicate or distort the window assembly.",
+      "suggested_use": "Represent a window sill as an integrated part/support surface of the window asset. Preserve supported children such as books by redirecting their support relation to the parent window or a registered sill support point, but do not require a standalone window-sill GLB."
+    },
+    {
+      "id": "storage_with_door_words_is_not_room_door",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_current_rerun_20260622_img0610_113657_reuse_assets_rebuild_tree_alias_continue",
+      "observation": "A tall wardrobe was treated like a room_door because its description mentioned visible doors and handles. Same-wall audit then allowed it to overlap a real right-wall room door.",
+      "suggested_use": "Classify room doors by object identity/category/semantic role, not by the word 'door' inside storage descriptions. Wardrobes, cabinets, dressers, chests, shelves, and nightstands with doors remain storage and should participate in room-door/storage wall-tangent gap checks."
+    },
+    {
+      "id": "wall_against_storage_defaults_back_to_wall",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow2_wall_material_20260620_img0610_113657_reuse_assets_wall_material_no_window_fallback",
+      "last_validated_run": "flow2_current_rerun_20260622_img0610_113657_scenegraph_continue_tabletop_final_fix_twostage",
+      "observation": "Right/left wall wardrobes, dressers, and cabinets repeatedly got a wrong pose when the agent saw drawer or door fronts in an oblique reference and the normalizer inferred side-face wall contact. The object then touched the wall with a side or visually incorrect face instead of putting the back against the wall and the front toward the room.",
+      "suggested_use": "For high-confidence against-wall floor storage such as wardrobes, dressers, cabinets, chests, sideboards, and bookcases, default to back-to-wall contact and set the visible front into the room: wall_east=180, wall_west=0, wall_north=270, wall_south=90. Allow left_side/right_side contact only when the reference or agent evidence explicitly says a side panel/side face touches the wall; merely seeing handles or drawer fronts from the camera is not enough."
+    },
+    {
+      "id": "density_front_trim_must_preserve_side_wall_storage_tangent_depth",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow2_full_regen_20260620_img0610_211046_two_stage_flux2_trellis2",
+      "last_validated_run": "flow2_wall_storage_pose_fix_20260622_img0610_113657_reuse_assets_back_to_wall_storage_twostage",
+      "observation": "Side-wall wardrobes/dressers/cabinets could be correctly repaired to a wall corner or same-wall segment during per-wall audit, but a later second-stage front-depth trim treated them as ordinary floor objects and pulled their wall-tangent depth toward the foreground. The final render then showed a right-wall cabinet away from the intended corner or a left-wall cabinet too deep/shallow even though earlier reports had repaired it.",
+      "suggested_use": "During density compaction, preserve the wall-tangent coordinate of east/west wall-backed floor storage. Only the wall-normal coordinate should follow the moved wall. After every density, support, tabletop, or collision pass, rerun per-wall object relation audit as a final closure so storage-corner affinity and door/storage tangent separation cannot be overwritten."
+    },
+    {
+      "id": "density_refiner_needs_collision_backoff_line_search",
+      "status": "skill",
+      "occurrences": 4,
+      "first_seen_run": "flow2_depth_wall_tangent_fix_20260622_img0610_113657_reuse_assets_density_depth_fix_twostage",
+      "last_validated_run": "flow2_depth_residual_fix_20260622_img0610_113657_reuse_assets_walllocal_residual_backoff",
+      "observation": "The second-stage density agent correctly detected excessive foreground/room emptiness and proposed a front-depth trim, but the old pipeline tried the proposed width/length ratios once and rejected the whole stage when collision or MuJoCo regressed. A later backoff-only implementation still failed when a small tabletop collision reappeared after support snapping, even though local collision repair could clear it.",
+      "suggested_use": "Treat the agent's room shrink as an upper bound, not a single mandatory edit. If the full candidate regresses collision or physics, run a line search: for front-depth trims first keep width fixed and reduce only foreground depth, then gradually reduce shrink strength. For every main and residual density backoff attempt, rerun support settling, tabletop packing, per-wall audit, local collision repair, aggregate collision, and MuJoCo before accepting or rejecting."
+    },
+    {
+      "id": "side_wall_storage_depth_order_must_execute_not_only_diagnose",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_density_backoff_20260622_img0610_113657_reuse_assets_density_backoff_repair_twostage",
+      "last_validated_run": "flow2_depth_residual_fix_20260622_img0610_113657_reuse_assets_walllocal_residual_backoff",
+      "observation": "The wall-local planner and reference-depth report correctly inferred that the left-wall dresser should be in front of the window/curtain wall segment, but the old tangent alignment only moved wall fixtures and floor decor. The dresser remained at the old deep wall-tangent y, and density trimming preserved that wrong side-wall storage tangent coordinate.",
+      "suggested_use": "When side-wall storage has strong bbox-bottom/frontness or wall-local corner-affinity evidence, execute a wall-tangent move for the storage itself, not just a diagnostic warning or a skipped window-alignment note. Move direct tabletop/support children with the storage, then rerun support settling, per-wall audit, collision, and MuJoCo."
+    },
+        {
+            "id": "residual_density_must_not_reapply_absolute_side_wall_depth_targets",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_residual_fix_20260622_img0610_113657_reuse_assets_walllocal_residual_backoff",
+            "observation": "The first density pass produced a better reference-view layout, but the residual pass re-ran reference-depth side-wall tangent alignment and used bbox vertical backness as absolute wall-local y targets again. The repeated capped correction pushed the left-wall dresser, wall art, curtains/window, and right-wall door/wardrobe too tightly or too far forward even though the first pass was visually closer.",
+            "suggested_use": "Run absolute side-wall tangent-depth alignment at most once after a density compaction. Residual density passes should preserve the first-pass side-wall tangent layout and only trim remaining empty foreground/room shell space, then run support settling, tabletop packing, per-wall relation audit, collision, and MuJoCo. Use depth evidence in residual as diagnostics or bounded review, not another absolute coordinate target."
+        },
+        {
+            "id": "against_wall_floor_furniture_must_not_be_wall_mounted_slab",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_residual_fix_20260622_img0610_113657_reuse_assets_residual_preserve_wall_tangent_alias2",
+            "observation": "A queen bed with semantic `wall_relation.mode=against` and a correct reference-scale prior of about 2.44m by 2.26m was later treated as `attached_to_wall` because its support/parent resolved to `wall_north`. The generic wall-mounted thin-slab rule then compressed the bed length to 0.08-0.12m, so density, collision, and wall-contact repair operated on a false footprint and the bed appeared to drift or flatten in the final scene.",
+            "suggested_use": "Keep `against wall` floor furniture separate from true wall-mounted fixtures. Beds, sofas, wardrobes, dressers, cabinets, bookcases, nightstands, desks, chairs, floor plants, and floor lamps may have a wall relation while remaining floor-supported with full footprint dimensions. Only windows, wall art, mirrors, posters, wall clocks, curtains/rods, and room doors should use wall-mounted thin-depth clamping."
+        },
+        {
+            "id": "reference_depth_requires_render_depth_agent_review_before_hard_repair",
+            "status": "reference",
+            "occurrences": 2,
+      "first_seen_run": "flow2_depth_tangent_fix_20260621_img0610_211046_strict_asset_only_alias_two_stage",
+      "last_validated_run": "flow2_wall_storage_pose_fix_20260622_img0610_113657_reuse_assets_back_to_wall_storage_twostage",
+      "observation": "DepthAnything/reference-depth samples existed, but the scene could still pass because depth-profile factors were soft diagnostics in branch mode. Some absolute depth estimates for tall side-wall storage, wall art, windows, and curtains are noisy because bbox crops mix wall pixels, object height, occlusion, and perspective.",
+      "suggested_use": "Use reference depth as a trigger for a final agent review, not as an unconditional hard repair. The review should compare reference image, rendered image, object bboxes, and depth-map evidence, then decide whether the mismatch is a real layout-depth error or a single-image-depth artifact. High-confidence side-wall depth errors should repair along the wall tangent while preserving wall contact, support relations, and accepted pose."
+    },
+    {
+      "id": "side_wall_storage_window_alignment_must_check_depth_contradiction",
+      "status": "reference",
+      "occurrences": 2,
+      "first_seen_run": "flow2_walllocal_visibleface_fix_20260620_img0610_113657_reuse_assets_two_stage_curtain_dresser_fix2",
+      "last_validated_run": "flow2_depth_wall_tangent_fix_20260622_img0610_113657_reuse_assets_density_depth_fix_twostage",
+      "observation": "A left-wall dresser visually below/near a window was repeatedly pushed to the window/curtain tangent depth. In the reference, the dresser crop bottom and DepthAnything frontness showed the dresser was substantially closer to the camera than the window, so the window-cluster rule made the dresser too deep.",
+      "suggested_use": "Before aligning side-wall storage to a same-wall window segment, compare storage and window reference depth/frontness plus bbox bottom. If both show the storage is clearly closer to the camera, skip window-depth alignment and let the bed-front/depth or explicit wall-local relation rule decide the storage tangent coordinate."
+    },
+    {
+      "id": "false_positive_tabletop_objects_should_be_removed_not_dropped",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_current_rerun_20260622_img0610_113657_reuse_assets_rebuild_tree_alias_continue",
+      "observation": "When the bedside/tabletop reference agent rejected a small object as not visible or false positive, the old merge logic removed only the support relation. The object stayed in the scene and fell to the floor/front foreground.",
+      "suggested_use": "For small tabletop/bedside candidates explicitly rejected by the reference agent as false positives, remove or suppress the object from the scene graph and all relations. Do not leave it as an unsupported floor object."
+    },
+    {
+      "id": "density_collision_repair_must_not_detach_wall_anchored_beds",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_density_floor_material_20260622_img0610_211046_reuse_assets_two_stage",
+      "observation": "The density refiner itself preserved the queen bed near the north wall, but the following local floor-branch collision repair moved queen_bed by about 0.54m away from the wall to avoid a left_nightstand collision. The rendered result made the bed visibly float forward instead of keeping the headboard against the back wall.",
+      "suggested_use": "For beds, sofas, cabinets, dressers, wardrobes, and other floor anchors with against-wall evidence, reject collision-repair candidates that move the anchor away from its contacted wall along the wall normal. Prefer side-object lateral shifts, wall-tangent shifts, support-child resettling, or scale/clearance fixes."
+    },
+    {
+      "id": "floor_covering_topology_does_not_imply_floor_material",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_density_floor_material_20260622_img0610_211046_reuse_assets_two_stage",
+      "observation": "Treating an area rug as a thin floor-layer in the support tree is useful for collision/support, but after sampling a new floor material the rug visually blended into the floor. The Trellis2 rug asset also behaved like a thin border rather than a filled carpet surface.",
+      "suggested_use": "Keep rug/carpet as floor-supported underlay in topology, but give it an independent material or a thin filled underlay at assembly time. Do not reuse the sampled floor material for rugs; add rug-specific texture/pattern sampling later if needed."
+    },
+    {
+      "id": "window_curtain_assembly_must_override_generic_wall_order",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_full_regen_20260620_img0610_211046_two_stage_flux2_trellis2",
+      "observation": "The right-wall window group was correctly identified as left curtain, window, right curtain, but later generic same-wall relation repair moved both curtains and the rod to one side of the window. The final plan had window.y=2.72 while curtains were y=1.16 and y=0.29, so the window was no longer between the two curtains.",
+      "suggested_use": "Treat window, paired curtain panels, and curtain rod as one wall fixture assembly. Lock the window between the two panels after generic per-wall repair and again before final rendering. A curtain rod should span the whole group and should not impose support-tree parentage on curtain panels."
+    },
+    {
+      "id": "paired_window_curtains_must_split_before_layout",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_img0610_113657_image2_assets_split_curtains_v1",
+      "last_validated_run": "flow2_img0610_113657_image2_assets_split_curtains_v1",
+      "observation": "The reference showed a left curtain half, a window, and a right curtain half, but the reuse scene graph contained one composite `left_window_curtains` object. Window-curtain assembly repair requires at least two curtain-panel object ids, so no ordering lock could fire while the pair stayed a single logical object. Asset component policy correctly warned that the set should be split, but in reuse-only mode that warning did not rewrite the scene graph or create layoutable panel instances.",
+      "suggested_use": "Before reference grounding and layout, split a composite curtain-pair object into separate left/right curtain panel objects when it flanks a same-wall window. Add `left_of`/`right_of` relations against the window, keep the curtain rod as a spanning fixture, and reuse or derive separate GLBs for the two panel ids. Do not expect component-policy QA or generic same-wall order repair to split a composite reused asset."
+    },
+    {
+      "id": "fine_stage_detailed_order_must_be_agent_endpoint_constraints",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_img0610_113657_image2_assets_split_curtains_fineorder_scale_v4_review",
+      "observation": "Third-stage fine sorting cannot generalize if it only consumes coarse center-order groups plus hand-coded residuals. It misses interval/edge relationships such as one object's back edge, another object's back/front edges, and the first object's front edge forming a nested depth order, and it can pass despite a visible mismatch if no required endpoint residual is emitted.",
+      "suggested_use": "Before third-stage fine refinement, run a reference/comparison-image agent over the current layout units and ask for x/y/z endpoint constraints: `unit.low|center|high <= unit.low|center|high` or approximate equality. Treat window/curtain/rod assemblies as locked units, let deterministic code apply bounded translations or grounded height scales, and reject the fine stage when required endpoint constraints remain unresolved."
+    },
+    {
+      "id": "wall_flat_assets_should_not_use_broad_thin_artifact_cleanup",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_full_regen_20260620_img0610_211046_two_stage_flux2_trellis2",
+      "observation": "The closet door asset was a legitimate wall-flat object, but asset cleanup removed two broad thin components and 15174 faces. The result looked like a fragmented/patchy door even though the raw Trellis2 asset was not a multi-object failure.",
+      "suggested_use": "For wall-attached doors, windows, curtain panels/rods, mirrors, posters, paintings, and wall art, protect broad thin planes during cleanup. Use separate QA for bad texture/blank panels rather than deleting planar geometry as white-base or ground-sheet artifacts."
+    },
+    {
+      "id": "wall_panel_pose_feedback_should_survive_thin_layer_collision_false_positives",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_full_regen_20260620_img0610_211046_two_stage_flux2_trellis2",
+      "observation": "Final pose feedback correctly proposed inward-facing yaws for the right-wall window, left-wall art, and above-bed wall art, but all three were rolled back because unrelated wall-layer collision checks still reported conflicts.",
+      "suggested_use": "When high-confidence final pose feedback sets a wall-attached window/door/wall-art effective yaw to the wall's inward direction, protect that edit from rollback caused only by unresolved thin wall-layer collision warnings."
+    },
+    {
+      "id": "reuse_run_scene_plan_prior_over_asset_metadata",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v32_fullflow_reuse_flux2_assets_alias",
+      "superseded_by": "reused_asymmetric_assets_need_local_coordinate_metadata_not_scene_pose",
+      "good_reference_runs": [
+        "flow_refiner_test_v23_restore_supported_children_glb",
+        "flow_refiner_test_v27_prior_child_offsets_final_decor_only_glb",
+        "flow_refiner_test_v29_pillow_prior_mattress_upright_plant_glb",
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "For same-scene asset reuse, dimensions from an accepted scene_plan preserve scene-scale semantics better than raw asset metadata. In v32, asset metadata compressed tall wardrobes to about 1.2m; accepted runs kept them as tall rear cabinets.",
+      "suggested_use": "Use an accepted scene_plan as a scale/support prior only when the run explicitly requests accepted-prior evaluation. Plain asset reuse must not imply copying old scene dimensions, yaw, or position."
+    },
+    {
+      "id": "near_wall_bedside_storage_is_not_wall_flush_storage",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v32_fullflow_reuse_flux2_assets_alias",
+      "observation": "A bedside nightstand marked near a wall should not be clamped as a rear-wall storage object. v32 moved left_nightstand from the bedside depth to the rear wardrobe row and caused collision.",
+      "suggested_use": "Only apply wall-flush storage repair to explicit against/attached/wall_flush wall relations or wall support, not merely near-wall relations."
+    },
+    {
+      "id": "parent_motion_must_preserve_supported_children",
+      "status": "reference",
+      "occurrences": 2,
+      "first_seen_run": "flow_refiner_test_v32_fullflow_reuse_flux2_assets_alias",
+      "last_seen_run": "flow_refiner_test_v41b_autonomous_scale_layout_pillow_pose_alias",
+      "observation": "Moving a support object without moving its direct supported children breaks the support tree. v32 moved left_nightstand but left_table_lamp stayed at the old depth.",
+      "latest_observation": "In v41b, right_dresser/right_side_cabinet were repacked to the east wall after their plants had been snapped to valid top surfaces; later movement/pose repair left dresser_potted_plant and side_cabinet_potted_plant outside the registered top surfaces.",
+      "suggested_use": "Any post-layout repair that translates or rotates a support object should move its directly supported children and re-snap them to the registered support surface before validation."
+    },
+    {
+      "id": "small_occluded_plants_need_support_prior_review",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v32_fullflow_reuse_flux2_assets_alias",
+      "observation": "Small occluded plants near the bed/wardrobe boundary are easy to misclassify as floor decor. v32 changed the good prior's small supported plant into a larger floor plant and collided with the bed.",
+      "suggested_use": "Use accepted prior support relations as reference for tiny, partially occluded decorative objects when the current reference evidence is ambiguous."
+    },
+    {
+      "id": "soft_supported_objects_should_inherit_scene_scale_prior",
+      "status": "superseded_reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v34_reuse_prior_alias_dedupe",
+      "superseded_by": "soft_textiles_are_parent_asset_details_not_layout_objects",
+      "good_reference_runs": [
+        "flow_refiner_test_v29_pillow_prior_mattress_upright_plant_glb",
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "Older runs treated pillows and cushions as support-tree children whose generated asset metadata could be much larger than the accepted scene scale. This was useful before the current rigid-only layout scope.",
+      "suggested_use": "Do not restore pillows/cushions/blankets from old scene_plan priors in current Flow 2. Merge them into the parent bed/sofa asset prompt and skip separate layout, support, scale, and asset generation."
+    },
+    {
+      "id": "side_wall_branch_affinity_should_not_propagate_to_free_decor",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v34_reuse_prior_alias_dedupe",
+      "good_reference_runs": [
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "A side-wall branch refiner can over-propagate wall affinity from a mirror/dresser cluster to nearby free decor. In v34, the right bedside floor plant was marked as near the east wall even though the accepted layout keeps it as a free plant beside the bed.",
+      "suggested_use": "Use side-wall branch propagation for wall-attached objects, wall-facing storage/table anchors, and floor lamps. Treat free floor plants/decor as separate unless the reference evidence independently supports a wall relation."
+    },
+    {
+      "id": "classification_should_not_promote_by_support_words_in_id",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v35_pillow_prior_sidewall_scope",
+      "observation": "Object IDs and support descriptions can contain anchor words that are not object identity. v35 classified dresser_tall_plant as storage because the id/support description contained dresser, although category and semantic_class were plant.",
+      "suggested_use": "For semantic routing, trust agent semantic_class and category before ID substrings. Treat support words like 'on dresser' as relation context, not object class evidence."
+    },
+    {
+      "id": "rerun_must_strip_generated_refiner_artifacts",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v36_classification_scope_fix",
+      "observation": "When using a previous flow2 scene_graph as input, generated relations from earlier reference-consistency passes can persist and override the current corrected logic. v36 still treated right_floor_plant as near wall_east because v31 contained stale reference_consistency_wall relations.",
+      "suggested_use": "Before rerunning flow2 from a prior flow2 scene_graph, remove generated reference-consistency/order/wall-affinity relations and generated wall semantics, then regenerate them with the current pipeline."
+    },
+    {
+      "id": "branch_audit_contact_tolerance_should_match_aggregate_collision",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v37_sanitized_refiner_artifacts",
+      "good_reference_runs": [
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "Branch audit marked a bed/wardrobe locked-branch collision even though the overlap depth rounded to zero and aggregate collision treated it as contact. This prevented an otherwise lower-collision repair candidate from being accepted.",
+      "suggested_use": "Use the same small numeric tolerance for branch audit and aggregate collision checks. Contact-level or floating-point-thin overlap should not be a hard branch failure."
+    },
+    {
+      "id": "low_depth_readability_depth_profile_should_be_diagnostic",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v37_sanitized_refiner_artifacts",
+      "good_reference_runs": [
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "The view-condition report marked the bedroom reference as oblique with low depth readability, but a depth-profile ratio warning still blocked final acceptance. The right dresser branch positions were nearly a room-size-adjusted copy of v30, so the hard depth-ratio constraint was overfitting compressed reference depth.",
+      "suggested_use": "When reference depth readability is low or branch-relation mode is active, keep depth-profile ratios as soft diagnostics. Preserve hard checks for object ordering, wall/support relations, and physical collisions."
+    },
+    {
+      "id": "reference_consistency_must_remove_contradictory_agent_relations",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v38_contact_depth_soft_accept",
+      "good_reference_runs": [
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "The right-wall branch had both agent_spatial_order floor_lamp in_front_of dresser and reference-consistency dresser in_front_of floor_lamp. The cycle made branch depth packing fall back to bbox/depth heuristics and moved the floor lamp away from the right rear corner.",
+      "suggested_use": "When a later trusted reference-consistency relation corrects a spatial relation, remove the inverse same-axis relation from earlier agent output before topology-based ordering."
+    },
+    {
+      "id": "bedside_objects_need_lateral_side_clearance",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v38_contact_depth_soft_accept",
+      "good_reference_runs": [
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "right_floor_plant satisfied the agent's behind-bed relation but remained inside the bed's x footprint, then collided when the bed was moved rearward by depth-slice contact. The reference evidence says it is beside the right side of the bed, which is a lateral constraint, not only a depth relation.",
+      "suggested_use": "For floor objects described as beside the left/right side of a large bed or sofa, keep their footprint laterally outside the large object's footprint while preserving normal depth/support checks."
+    },
+    {
+      "id": "bedside_objects_need_depth_alignment_not_foreground_escape",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v39_relation_cycle_bedside_clearance",
+      "good_reference_runs": [
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "After lateral clearance was fixed, right_floor_plant could still satisfy non-collision checks while moving to the foreground. The reference and branch evidence describe it as beside the bed in the rear half, near the bed side/head area rather than at the foot foreground.",
+      "suggested_use": "For free floor objects described as beside a bed/sofa side, enforce depth alignment with the bed side region when the object drifts far in front of the large object center."
+    },
+    {
+      "id": "cold_start_scale_prior_should_not_depend_on_asset_metadata",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v31_fullflow_reuse_flux2_assets",
+      "good_reference_runs": [
+        "glb_v12_v2_floor_lamp_corner_fix",
+        "flow_refiner_test_v30_flux2_target_assets_glb",
+        "flow_refiner_test_v40_bedside_depth_alignment"
+      ],
+      "observation": "Raw Trellis/asset metadata describes the generated mesh bounds, not the intended scene-scale role. In v31/v32 it made wardrobes short and thick and pillows oversized, while accepted scene plans kept tall shallow wardrobes and small bed-supported pillows.",
+      "suggested_use": "For cold-start runs without an accepted scene_plan prior, estimate dimensions from semantic real-world ranges, grounded room size, reference instance bbox ratios, and support-tree parent bounds before falling back to asset metadata."
+    },
+    {
+      "id": "scale_prior_must_combine_semantics_reference_bbox_and_support_bounds",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_scale_prior_estimator_v1",
+      "good_reference_runs": [
+        "glb_v12_v2_floor_lamp_corner_fix",
+        "flow_refiner_test_v30_flux2_target_assets_glb"
+      ],
+      "observation": "No single scale signal is reliable: semantic category gives plausible physical ranges, reference bbox gives same-kind relative size, and support relations prevent pillows/tabletop decor from growing beyond their parent surface.",
+      "suggested_use": "Build scale priors with source priority accepted scene_plan > reference_scale_estimator > asset_metadata. Upgrade this advisory into a skill only after it survives multiple distinct scenes."
+    },
+    {
+      "id": "scale_kind_identity_must_override_context_description",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow2_scale_prior_estimator_smoke_v1",
+      "good_reference_runs": [
+        "flow2_scale_prior_estimator_smoke_v3"
+      ],
+      "observation": "Scale-kind classification was polluted by relation/context words in descriptions: double_bed was classified as bedding because its description mentioned bedding, and center_wardrobe was classified as bed because its description mentioned the bed.",
+      "suggested_use": "For scale estimation, classify by object id/category and agent semantic class before reading free-form descriptions. Treat description words like 'behind bed' or 'on dresser' as relation context, not object identity."
+    },
+    {
+      "id": "mattress_supported_children_should_not_use_full_bed_height",
+      "status": "superseded_reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v40_bedside_depth_alignment",
+      "superseded_by": "soft_textiles_are_parent_asset_details_not_layout_objects",
+      "observation": "Older runs placed separate pillows at about 95% of the full bed object height. For beds with a high headboard or backrest, full object height was not the mattress contact height, so pillows visibly floated above the bed.",
+      "suggested_use": "Current Flow 2 should not create separate bed-supported pillow/cushion/bedding children. Fix visible bedding through the parent bed asset prompt instead of mattress-surface child placement."
+    },
+    {
+      "id": "bed_supported_pillow_pose_should_align_with_bed_width",
+      "status": "superseded_reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v40_bedside_depth_alignment",
+      "superseded_by": "soft_textiles_are_parent_asset_details_not_layout_objects",
+      "observation": "Older runs tried to pose separate bed-supported throw pillows. Even when height was plausible, yaw could be wrong and the soft objects added fragile collision and support constraints.",
+      "suggested_use": "Current Flow 2 should not route pillow/cushion pose through layout repair. Integrate visible pillows/cushions into the parent bed/sofa asset."
+    },
+    {
+      "id": "bedside_lateral_clearance_must_not_move_rear_wall_storage",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v41b_autonomous_scale_layout_pillow_pose_alias",
+      "observation": "The bed-side lateral clearance refiner treated center_wardrobe as a left-side bed object because the reference relation said it was left_of the bed. It moved the rear-wall wardrobe into the left_wardrobe footprint and created a severe overlap.",
+      "suggested_use": "Apply bed-side lateral clearance only to explicit bedside objects such as nightstands, bedside tables, bedside lamps, and free bed-side plants/decor. Exclude rear/side wall storage anchors such as wardrobes, dressers, cabinets, chests, bookcases, and shelving even when they have left/right relations with the bed."
+    },
+    {
+      "id": "registered_support_surface_must_override_parent_footprint_snap",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v41b_autonomous_scale_layout_pillow_pose_alias",
+      "last_validated_run": "flow_refiner_test_v43_independent_final_support_collision_fix",
+      "observation": "The support-surface registry correctly snapped tabletop plants to right_dresser_top and right_side_cabinet_top, but a later footprint-based snap used the whole rotated parent footprint and pulled the plants outside the actual top surface.",
+      "latest_observation": "In v55, final support-surface snapping could recenter tabletop children after packing and recreate right_nightstand lamp/plant overlap unless x/y packing was preserved and only z/clamping was applied.",
+      "suggested_use": "When a registered support surface exists, support repair must clamp children to that surface's bounds_2d and z height. Parent rotated footprint is only a fallback for objects without a registered support surface. Run this snap again after all layout-polish and collision-repair passes, but do not recenter children that are already within the surface."
+    },
+    {
+      "id": "bed_rear_occluded_floor_decor_needs_post_bed_depth_repair",
+      "status": "reference",
+      "occurrences": 2,
+      "first_seen_run": "flow_refiner_test_v41b_autonomous_scale_layout_pillow_pose_alias",
+      "last_seen_run": "flow_refiner_test_v43_independent_final_support_collision_fix",
+      "observation": "After the bed was moved backward to contact rear furniture using depth-slice evidence, a small center floor plant remained inside the bed footprint. The original reference placement is visually between the bed and rear wardrobes, but the feasible scene needs either a narrow lateral gap or a support/occlusion-aware fallback.",
+      "latest_observation": "v43 removed the collision by pushing small_center_potted_plant to the front-left floor, but the visual placement no longer matches the reference's occluded rear/bedside gap.",
+      "suggested_use": "After large bed/sofa depth repair, revalidate nearby small floor decor against the large object's footprint. If reference evidence places it in an occluded rear gap, prefer a narrow lateral rear gap or support/occlusion-aware fallback before moving it to a visually unrelated foreground location."
+    },
+    {
+      "id": "wall_aligned_storage_collision_should_use_wall_tangent_order",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v43_independent_final_support_collision_fix",
+      "observation": "Generic floor-branch collision repair can choose a diagonal or depth move for wall-aligned storage, which preserves collision score locally but breaks the intended rear-wall row. v43 needed same-wall repair to separate center_wardrobe and left_wardrobe along the wall tangent x axis.",
+      "suggested_use": "For floor storage anchors sharing the same wall relation, resolve collisions by preserving wall contact and moving along the wall tangent axis according to reference left/right order. Use generic floor repack only after same-wall storage repair fails."
+    },
+    {
+      "id": "back_wall_bed_requires_direct_rear_edge_grounding",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v40_bedside_depth_alignment",
+      "last_validated_run": "flow_refiner_test_v55_final_validator_stale_branch_diag",
+      "observation": "Bed depth drift recurred when the reference had a clear back-wall bed relation but no usable rear floor anchor. Without explicit rear-edge grounding, the bed stayed too far forward or relied on unrelated furniture anchors.",
+      "suggested_use": "For bed/sofa objects with explicit against-back-wall evidence, ground the rear edge near the wall when no stronger rear-contact anchor exists. After moving the anchor, rerun bedside alignment and direct-child support snapping."
+    },
+    {
+      "id": "bedside_tables_are_bed_branch_not_side_wall_storage",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v32_fullflow_reuse_flux2_assets_alias",
+      "last_validated_run": "flow_refiner_test_v55_final_validator_stale_branch_diag",
+      "observation": "Near-wall nightstands were repeatedly pulled into rear/side-wall storage packing, which broke their relation to the bed and moved supported lamps/decor to the wrong depth.",
+      "suggested_use": "Classify nightstands/bedside tables as part of the bed branch. Exclude them from side-wall storage branch packing, then align them after bed motion and translate their directly supported children."
+    },
+    {
+      "id": "tabletop_packing_must_use_rotated_support_footprint",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v43_independent_final_support_collision_fix",
+      "last_validated_run": "flow_refiner_test_v55_final_validator_stale_branch_diag",
+      "observation": "Tabletop sibling packing used raw support width/length, so a yawed nightstand selected the wrong world axis. It packed children outside the real top surface, and support snapping later collapsed them back together.",
+      "suggested_use": "Choose tabletop packing axis and available extent from the support object's rotated world footprint or registered top surface bounds, not from unrotated dimensions."
+    },
+    {
+      "id": "small_tabletop_identity_must_ignore_support_context_words",
+      "status": "skill",
+      "occurrences": 5,
+      "first_seen_run": "flow_refiner_test_v35_pillow_prior_sidewall_scope",
+      "last_validated_run": "regression_20260611_img0610_211046_soft_policy_plan",
+      "observation": "Object descriptions such as 'alarm clock on the left nightstand' or plant ids with support words polluted scale/type classification, causing small tabletop objects to inherit furniture-scale bounds.",
+      "latest_observation": "In the 20260611 bedroom plan-only regressions, the VLM/agent semantics were mostly correct: `dresser_books` and `right_nightstand_books` were tagged as `tabletop_flat`, and `framed_photo_on_dresser`, `photo_on_right_nightstand`, and `small_photo_on_left_nightstand` were tagged as `tabletop_upright`. The deterministic `_scale_kind` path then read support anchors from ids such as `dresser_books` and `photo_on_right_nightstand`, reclassified them as `dresser` or `nightstand`, and the reference scale estimator expanded books/photo frames to furniture-scale dimensions.",
+      "suggested_use": "For scale/type classification, trust category plus agent `semantic_class`/`layout_role` before id substrings. Strip or downweight support-anchor tokens such as `on_dresser`, `on_left_nightstand`, `on_right_nightstand`, `dresser_`, and `nightstand_` when the category or agent semantics say `books`, `picture frame`, `photo`, `tabletop_flat`, `tabletop_upright`, or `tabletop_child`. Tabletop books/photo/frame/clock/decor must keep small-object bounds tied to the support surface; reference bbox ratios may only adjust within those bounds."
+    },
+    {
+      "id": "tabletop_packing_checks_must_drive_report_ok",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "regression_20260612_img0610_211046_scale_semantics_fix_plan",
+      "last_validated_run": "regression_20260612_img0610_211046_scale_semantics_pack_fix_plan",
+      "observation": "The left nightstand tabletop check reported available=0.524m and needed=0.537m, but the top-level tabletop_sibling_scale_packing_report still said ok=true. This hid a small lamp/plant overlap until the aggregate collision report caught it.",
+      "suggested_use": "Every failed tabletop sibling support check must set the top-level report ok=false. For near-fit tabletop siblings, reduce the visual gap to the configured minimum before scaling; when lamps or other objects are fixed, compute shrink scale from fixed-width plus shrinkable-width terms instead of using a naive available/needed ratio."
+    },
+    {
+      "id": "final_validator_must_distinguish_stale_branch_snapshots",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v55_final_validator_stale_branch_diag",
+      "observation": "The final aggregate collision report had zero conflicts, but global validation still failed because it included early incremental branch collision snapshots from before final tabletop/support repair.",
+      "suggested_use": "Treat collision-only incremental branch failures as stale diagnostics when final aggregate collision is clean. Keep non-collision branch failures hard until a final branch audit confirms they are resolved."
+    },
+    {
+      "id": "wall_flat_assets_need_visual_qa_or_procedural_fallback",
+      "status": "reference",
+      "occurrences": 2,
+      "first_seen_run": "flow_refiner_test_v54_support_snap_preserve_packing",
+      "last_seen_run": "flow_refiner_test_v55_final_validator_stale_branch_diag",
+      "observation": "Left-wall window, curtain panels, and botanical wall art had correct wall support and thin-axis repair but rendered as unreadable black/fragmented blocks. Axis QA alone did not catch the visual failure.",
+      "suggested_use": "Include wall assets such as windows, curtains, doors, and wall art in canonical-front visual QA. For simple wall-plane objects, prefer procedural fallback when Trellis2 produces unreadable flat panels."
+    },
+    {
+      "id": "floor_covering_identity_must_override_under_bed_context",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v56_rug_bedside_branch_fix",
+      "last_validated_run": "flow_refiner_test_v56_rug_bedside_branch_fix",
+      "observation": "The area rug was classified as kind=bed because its description said it was under the bed. It inherited queen-bed dimensions and height, producing a large black/jagged slab in front of the bed.",
+      "suggested_use": "Detect floor coverings from category/semantic class before scanning relational description text. Rugs and carpets should use thin floor-plane scale priors and should not inherit bed/furniture height."
+    },
+    {
+      "id": "side_wall_refiner_must_exclude_bedside_tables",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v32_fullflow_reuse_flux2_assets_alias",
+      "last_validated_run": "flow_refiner_test_v56_rug_bedside_branch_fix",
+      "observation": "The right nightstand was included in a far-right east-wall branch with wardrobe/door and then repaired as wall-facing storage, moving it into the wardrobe depth/side-wall slot and rotating it to yaw=270.",
+      "suggested_use": "Exclude nightstands and bedside tables from side-wall branch wall-relation rewriting, side-wall storage packing, and floor-storage-front-to-room yaw repair. Bedside furniture should be aligned from the bed branch."
+    },
+    {
+      "id": "oblique_side_wall_dresser_depth_needs_local_wall_context",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "flow_refiner_test_v56_rug_bedside_branch_fix",
+      "observation": "The left dresser stayed too far outward/front because the oblique reference gives it a low bbox bottom; bbox-bottom depth overstates foreground placement for side-wall furniture under a window.",
+      "suggested_use": "For side-wall dressers, combine bbox evidence with same-wall window alignment, wall tangent order, and tabletop/support context before accepting a forward-depth placement."
+    },
+    {
+      "id": "floor_covering_underlay_support_is_not_tabletop_support",
+      "status": "superseded_reference",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v57_rug_underlay_support",
+      "last_validated_run": "flow_refiner_test_v58_rug_underlay_surface_scale_fix",
+      "superseded_by": "floor_coverings_are_visual_layers_not_support_parents",
+      "observation": "The reference clearly shows the bed standing on the rug, but the old prompt and support tree kept both as independent floor branches. When the bed was first reparented to the rug, normal support bounds shrank the bed and the rug lacked a registered top surface.",
+      "suggested_use": "Treat rugs/carpets under beds or sofas as underlay supports. Preserve the large furniture x/y and scale, snap only its z to the rug top surface, register a floor-covering support surface, and align the rug under the large furniture after bed/sofa depth repair."
+    },
+    {
+      "id": "wall_attached_doors_need_flat_panel_asset_prompt",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v62_new_ref_211046_flux2_assets",
+      "observation": "The closet_double_door Flux2 input looked like a freestanding wardrobe/cabinet instead of a thin closet door panel. Trellis2 then generated a deep body that had to be extremely compressed onto the wall, producing poor visual quality even though the layout relation was nominally wall-attached.",
+      "suggested_use": "For wall-attached closet doors and similar flat wall assets, rewrite the asset-generation prompt to request a very thin wall-mounted panel/slab with visible front details and explicitly forbid freestanding cabinet bodies, side walls, and deep boxes. Treat extreme thin-axis compression as an asset-route failure that needs prompt repair or fallback."
+    },
+    {
+      "id": "same_side_wall_depth_must_order_wall_panels_against_floor_storage",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v62_new_ref_211046_flux2_assets",
+      "observation": "A wall-attached door and a floor dresser can share the same side wall but still have a clear front/back order in the reference. In v62 the left closet door was placed behind the left dresser although reference frontness showed the door should be closer to the viewer.",
+      "suggested_use": "For west/east wall objects, compare reference frontness/depth between wall-attached panels and same-wall floor storage. If the confidence and frontness gap are high enough, move the wall-attached object along the side-wall tangent in front of or behind the floor storage while preserving wall contact."
+    },
+    {
+      "id": "wall_attached_doors_are_floor_grounded_panels",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "bed_pose_axis_fix2_20260613_img0610_211046",
+      "observation": "The white_closet_doors asset was correctly generated as a Trellis2 door panel, but the layout treated it like a generic wall-hung object and placed its bottom edge high above the floor. A real closet/door panel should be flush with the wall and grounded at floor level.",
+      "suggested_use": "For wall-attached doors, closet doors, and wardrobe doors, preserve wall contact and force the bottom edge to the floor. Do not infer z from the reference bbox center the way windows, mirrors, paintings, or other wall decor are positioned."
+    },
+    {
+      "id": "preserve_high_confidence_bedside_front_pose_edits",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v62_new_ref_211046_flux2_assets",
+      "observation": "The final render pose agent can correctly identify that nightstand/dresser drawer fronts should face outward into the room, but the old rollback path reverted those edits when conservative hypergraph validation still reported unrelated warnings.",
+      "latest_observation": "In flow_refiner_test_v64_pose_preserve_reuse_v63_assets, preserving the high-confidence bedside drawer-front pose still failed because set_effective_yaw changed the physical footprint and created local collisions. The rollback then restored the old pose instead of running a pose-aware local clearance repair.",
+      "suggested_use": "After high-confidence final pose edits on bedside tables or drawer chests, rerun bedside alignment and support snapping before validation. If aggregate collision is clean, preserve drawer/front-to-room pose edits and record any remaining hypergraph warnings instead of rolling the edit back. If the pose edit itself changes footprint and creates a collision, first repair the object's local placement along its allowed bedside/wall-tangent clearance direction; roll back pose only after that local repair fails."
+    },
+    {
+      "id": "soft_textiles_are_parent_asset_details_not_layout_objects",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v62_new_ref_211046_flux2_assets",
+      "last_validated_run": "regression_20260611_v76_clean_graph_soft_policy_full",
+      "observation": "Objects such as green_bed_pillow and green_bed_throw were repeatedly treated as independent rigid children, entered unrelated pose/order factors, floated, collided, or were restored from old scale priors. The current Flow 2 scope is rigid or approximately rigid scene layout, so loose soft textiles are outside scope.",
+      "suggested_use": "Pillows, cushions, blankets, throws, quilts, duvets, and loose bedding must not be emitted as scene objects, restored from scale priors, added to support trees, sent to Trellis2, or repaired as collision targets. Preserve their visual evidence by appending it to the parent bed/sofa description and asset prompt."
+    },
+    {
+      "id": "integrated_soft_detail_text_must_not_declassify_parent_bed",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "regression_20260612_img0610_211046_scale_semantics_pack_fix_full_reuse",
+      "last_validated_run": "bed_pose_prior_flow_fix_check",
+      "observation": "After pillows and throws were merged into the bed asset description, `_is_bed_or_sofa_object` saw `green accent pillow` and rejected the parent bed as a bed/sofa. The bed then missed reused-asset pose-prior repair and rendered with the head/foot direction rotated wrong.",
+      "suggested_use": "Bed/sofa identity must be decided from object id, category, and semantic class before scanning description text for soft-detail words. Soft words in a parent bed/sofa description are integrated visual details, not evidence that the parent is itself a pillow/throw."
+    },
+    {
+      "id": "reused_asymmetric_assets_need_local_coordinate_metadata_not_scene_pose",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "regression_20260612_img0610_211046_scale_semantics_pack_fix_full_reuse",
+      "last_validated_run": "bed_pose_prior_flow_fix_check",
+      "observation": "The old accepted queen bed asset rendered correctly with yaw=90 and footprint_yaw_offset=90. A later rerun reused the same asset but recomputed the bed dimensions/footprint offset as yaw=90 and footprint_yaw_offset=180; long-axis validation passed, but the visible headboard/footboard was 90 degrees wrong.",
+      "suggested_use": "When reusing asymmetric large assets such as beds/sofas and their rugs, restore only asset-local coordinate metadata such as front offset, footprint offset, and asset_axis_to_z late in the flow, after generic pose/long-axis repair and before final validation/rendering. Do not copy source scene yaw, position, or dimensions; scene pose and scale must remain current-flow outputs unless an explicit accepted-scene prior is enabled."
+    },
+    {
+      "id": "curtains_should_not_use_raw_mesh_z_thickness_axis_repair",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "door_floor_grounded_reuse_20260613_img0610_211046",
+      "observation": "The direct Trellis2 curtain render was upright in Blender, but wall_asset_axis_repair treated the raw mesh z extent as thickness, set asset_axis_to_z=1, and the scene-used curtain rendered with the rod through the middle and vertical strip artifacts.",
+      "suggested_use": "Protect curtain/drape assets from generic raw-mesh z-thickness wall-axis remapping. Validate curtain orientation with a direct Blender asset turntable and an isolated scene render before changing asset_axis_to_z."
+    },
+    {
+      "id": "curtain_panels_need_reference_vertical_scale_not_hanging_default",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "curtain_axis_guard_reuse2_20260613_img0610_211046",
+      "observation": "Curtains were attached to the correct side wall after axis repair, but remained tiny high panels because the scale prior fell back to generic current/default dimensions and hanging placement used room_height - height - margin.",
+      "suggested_use": "Classify curtain/drape panels explicitly in the scale prior, allow tall wall-panel bounds, and after wall-axis repair refit their height and bottom z from the reference bbox vertical extent."
+    },
+    {
+      "id": "side_wall_window_curtain_order_should_not_absorb_floor_decor",
+      "status": "reference",
+      "occurrences": 2,
+      "first_seen_run": "curtain_axis_guard_reuse2_20260613_img0610_211046",
+      "last_seen_run": "curtain_scale_sidewall_guard_reuse_20260614_img0610_211046",
+      "observation": "In branch-relation mode, a right-wall window/curtain local order included a floor plant. The left/right image order on an oblique side wall was converted into wall-tangent depth and pushed the floor plant too deep, which then squeezed the right nightstand.",
+      "latest_observation": "The first filter failed because floor_plant was classified as wall-plane: its description said it was near the right window. This repeated the semantic-pollution pattern where relationship words are mistaken for object identity.",
+      "suggested_use": "When global ordering is disabled, keep wall-plane window/curtain/mirror/art groups separate from floor decor branches unless a support, contact, or clear depth relation proves they belong together. Classify this split from id/category/agent semantics, not full descriptions, and remove generated wall-plane left/right/front/back order relations between those mixed objects."
+    },
+    {
+      "id": "against_wall_floor_storage_needs_final_contact_clamp",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "curtain_scale_sidewall_guard_reuse_20260614_img0610_113657",
+      "observation": "The wardrobe was correctly identified as against wall_east in scene_graph and branch_reference_report, but later spatial/order/collision/final-polish repairs moved it away from the right wall. floor_storage_front_repair only verified the front-facing yaw and did not re-check wall contact distance.",
+      "suggested_use": "For high-confidence against/wall_flush floor storage such as wardrobes, dressers, cabinets, chests, bookcases, and shelving, run a final wall-contact clamp after all order, collision, pose, and layout-polish repairs. Preserve contact to the claimed wall and resolve remaining conflicts along the wall tangent. Do not let generic left/right ordering against wall-attached doors, windows, curtains, mirrors, or art pull the storage object off its wall plane."
+    },
+    {
+      "id": "floor_coverings_are_visual_layers_not_support_parents",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "flow_refiner_test_v57_rug_underlay_support",
+      "last_validated_run": "children_beds_20260614_plan_fix6_bedrow_fallback",
+      "supersedes": "floor_covering_underlay_support_is_not_tabletop_support",
+      "observation": "Treating a rug/carpet as an ordinary support parent makes partially-on-rug furniture impossible to represent: a bed can be half on rug and half on exposed floor, and normal support bounds can shrink or move the bed incorrectly. The children's two-bed reference repeated this with beds overlapping a central rug.",
+      "latest_observation": "In children_beds_20260614_plan_fix6_bedrow_fallback, marking the rug relations as floor-covering visual layers kept both twin beds floor-supported while still aligning and scaling the rug visually under the bed fronts.",
+      "suggested_use": "Keep rugs/carpets as thin visual floor layers with floor support. Use overlap/on evidence only for visual underlay alignment and rug scale; do not set beds, sofas, desks, chairs, or cabinets to support_id=rug. Allow thin rug/furniture geometric overlap without treating it as support failure."
+    },
+    {
+      "id": "same_wall_multi_bed_rows_need_group_independent_wall_line",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "children_beds_20260614_plan_fix6_bedrow_fallback",
+      "observation": "The spatial-order agent can miss a same-row group when two beds share the same wall. Without a fallback row, one bed can drift because pair-order constraints do not explicitly preserve a common wall-contact line.",
+      "suggested_use": "For multiple beds or sofas with the same high-confidence against-wall relation, infer a fallback same-wall row and clamp their wall-contact edge to the same line before pair-order and collision repair."
+    },
+    {
+      "id": "bed_wall_pose_must_solve_effective_yaw_and_footprint_axis_together",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "children_beds_20260614_plan_fix3_bed_pose_rug_front",
+      "last_validated_run": "children_beds_20260614_plan_fix6_bedrow_fallback",
+      "observation": "Fixing the visible bed front direction can accidentally rotate the physical footprint sideways when `footprint_yaw_offset_degrees` is not solved together with effective yaw.",
+      "suggested_use": "For beds and sofas, set yaw so the visible front/foot direction and long-axis footprint target are both satisfied. Re-check rotated footprint after any effective-yaw repair."
+    },
+    {
+      "id": "window_sill_support_surfaces_for_small_plants",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "children_beds_20260614_plan_fix6_bedrow_fallback",
+      "observation": "A small plant visually placed on a window sill failed support validation when windows only contributed vertical wall planes. The layout then had no horizontal surface to snap the plant to.",
+      "suggested_use": "When a wall window has a visible sill or a child object described as on the window sill, register a shallow horizontal sill support surface protruding into the room and snap the small child to that surface."
+    },
+    {
+      "id": "thin_wall_layers_against_storage_are_contact_not_collision",
+      "status": "reference",
+      "occurrences": 1,
+      "first_seen_run": "children_beds_20260614_plan_fix6_bedrow_fallback",
+      "observation": "Curtains, sheers, and windows are thin wall layers. When a wall-flush bookcase/storage object contacts them with only small wall-normal overlap, aggregate collision can report a false physical conflict even though the render is a tolerated wall-layer stack.",
+      "suggested_use": "For thin wall-attached layers against wall-flush storage on the same wall, ignore or soften collisions whose overlap is mainly the wall-normal layer thickness. Keep hard collision for deep interpenetration or tangent-axis overlap that visibly crosses two bulky objects."
+    },
+    {
+      "id": "side_wall_same_depth_lateral_clusters_are_not_depth_queues",
+      "status": "skill",
+      "occurrences": 4,
+      "first_seen_run": "children_beds_20260615_cluster_pose_fix_reuse_assets_v1",
+      "last_validated_run": "children_beds_20260616_mixed_depth_lateral_fix_v20",
+      "observation": "A left-wall study cluster with bookcase, desk, and chair can have a strong reference left-to-right order while still containing real depth variation. Earlier fixes prevented treating this cluster as a pure front/back queue, but later over-applied `same_depth_lateral`: in v18/v19 the bookcase, desk, and chair were forced to the same y and the bookcase broad axis was used as wall-normal footprint, spreading the chain too far into the room.",
+      "suggested_use": "Classify side-wall branches by layout mode before packing. Use a lateral side-wall branch when table/storage/seating members form a visual side-wall chain. Use `same_depth_lateral` only when bbox bottom, bbox center-y, and reference frontness do not show meaningful depth spread. If those cues disagree with same-depth, use `mixed_depth_lateral`: pack from the side wall inward on x, but preserve per-object y offsets from reference depth. Wall-adjacent storage/bookcases must use shallow footprint against the wall via floor-against-wall yaw, not generic wall semantic yaw."
+    },
+    {
+      "id": "front_yaw_offset_is_semantic_not_mesh_local_rotation",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "children_beds_20260615_cluster_pose_fix_reuse_assets_v1",
+      "last_validated_run": "children_beds_20260616_same_depth_cluster_fix",
+      "observation": "Applying `front_yaw_offset_degrees` as a local mesh rotation during Blender/trimesh assembly double-rotated directional assets. Beds, desks, and chairs then appeared visually reversed or inconsistent even when the semantic pose fields passed validation.",
+      "suggested_use": "Keep `front_yaw_offset_degrees` as semantic front-axis metadata for `_effective_yaw` and pose reasoning only. Assembly/render code may rotate imported mesh geometry only with `asset_local_yaw_offset_degrees`; when that field is absent it must be treated as 0."
+    },
+    {
+      "id": "near_wall_is_branch_affinity_not_wall_contact",
+      "status": "skill",
+      "occurrences": 3,
+      "first_seen_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v3",
+      "last_validated_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v5",
+      "observation": "`near wall_west` relations on a desk and chair were treated like `against_wall`, so final room clamping and front-facing storage repair pushed every member of a side-wall study cluster back onto the wall plane. This reintroduced overlap after the lateral pack had placed the objects correctly.",
+      "suggested_use": "Use `near` only as side-wall branch affinity. Hard wall contact, wall-plane clamping, and wall-facing storage pose may only use `against_wall`, wall support, or wall-flush/attached relations."
+    },
+        {
+            "id": "side_wall_local_branches_need_adjacent_global_anchors",
+            "status": "skill",
+            "occurrences": 3,
+            "first_seen_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v4",
+            "last_validated_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v5",
+            "observation": "The reference spatial-order agent sometimes put the bookcase in `main_floor_anchors` while putting the desk, chair, and lamp in `left_study_branch`. Treating the local branch alone made the refiner miss the intended bookcase-desk-chair side-wall chain and fall back to depth-queue packing.",
+            "suggested_use": "When building side-wall branches, inherit adjacent same-side global floor anchors into the local branch lateral order. Store an explicit `lateral_order` and make the executor and scene hypergraph use it, folding supported tabletop children into their parent."
+        },
+        {
+            "id": "same_depth_lateral_side_wall_overrides_legacy_same_wall_axis_mapping",
+            "status": "skill",
+            "occurrences": 3,
+            "first_seen_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v8",
+            "last_validated_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v10",
+            "observation": "The old relation interpreter remapped `left_of/right_of` between objects on the same east/west wall to the y axis. For a left-wall study chain already classified as `same_depth_lateral`, this caused `desk_left left_of desk_chair_left` to fail even when the final render correctly placed bookcase, desk, and chair laterally from wall to room.",
+            "suggested_use": "When a side-wall branch has `layout_mode=same_depth_lateral`, let the branch lateral order define the axis semantics. Suppress or soften older same-wall agent spatial-order relations that would reinterpret the same pair as a depth relation."
+        },
+        {
+            "id": "final_validation_reports_must_follow_last_plan_mutation",
+            "status": "skill",
+            "occurrences": 3,
+            "first_seen_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v8",
+            "last_validated_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v10",
+            "observation": "Final render pose feedback and late collision/support repair changed object positions after `reference_alignment_report` and `spatial_order_repair_report` had already been written. The render showed the left study cluster corrected, but stale reports still failed on the pre-fix chair/bed ordering.",
+            "suggested_use": "After any final pose, collision, support-surface, or reference-consistency mutation, rebuild support surfaces, branch summaries, reference alignment, aggregate collision, scene hypergraph validation, spatial-order audit, MuJoCo, global validator, and summary fields from the current final plan."
+        },
+        {
+            "id": "final_supported_children_need_pre_render_surface_settle",
+            "status": "skill",
+            "occurrences": 3,
+            "first_seen_run": "flow_refiner_test_bedroom_pillow_and_plant_support_regressions",
+            "last_validated_run": "children_beds_20260616_same_depth_cluster_fix_reuse_assets_v10",
+            "observation": "Supported small objects can keep an old absolute xy after their parent anchor moves late in the flow. In v9, the center nightstand moved backward between the two beds, but the table lamp and plant stayed at the old y position, leaving `support_id=nightstand_between_beds` while failing support validity and MuJoCo stability. In children_beds_20260616_edgecrop_support_fix_v17, `plant_on_bookshelf` kept an edge-packed xy on a narrow bookcase top and failed support coverage with ratio 0.50 despite correct z.",
+            "suggested_use": "Before final GLB assembly and final reference-view render, run support-surface application and tabletop/shelf sibling packing on the current final plan. Reassemble and rerender after this settle pass so the GLB, screenshots, and reports all reflect the same supported-child positions. Preserve edge packing only for true bedside/nightstand tabletop children; for shelf/bookcase children that are larger than the inset support interval, center them on the registered surface so physical support coverage passes."
+        },
+        {
+            "id": "edge_cropped_book_storage_scale_should_not_expand_to_full_default",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "children_beds_20260616_edgecrop_support_fix_v17",
+            "last_validated_run": "children_beds_20260616_edgecrop_support_snap_fix_v18",
+            "observation": "The left bookcase bbox touched the image boundary and represented only the visible cropped slice. The reference scale estimator expanded it from the normalized scene-graph size to a full tall bookcase prior, making the rendered left shelf dominate the scene.",
+            "suggested_use": "When a bookcase/bookshelf/shelving bbox touches an image boundary, treat the bbox as cropped visibility evidence. Preserve normalized scene-graph dimensions or clamp to a conservative partial-visible storage scale; do not infer a full tall-bookcase width/height from the cropped visible area alone."
+        },
+        {
+            "id": "window_sill_support_height_validator_must_match_registry",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "children_beds_20260616_edgecrop_support_fix_v17",
+            "last_validated_run": "children_beds_20260616_edgecrop_support_snap_fix_v18",
+            "observation": "After adding a registered window-sill support surface, `plant_on_window_sill` was correctly snapped near the lower sill height, but the reference-alignment validator still expected `window.z + window.height`, producing a false hard support-height failure.",
+            "suggested_use": "Keep support-height validation and support-surface registry consistent. For small objects supported by a window sill, expected support z should use the sill surface height near the bottom of the window, not the top of the window bbox."
+        },
+        {
+            "id": "back_to_wall_bed_mesh_local_axis_must_follow_raw_asset_extents",
+            "status": "superseded_reference",
+            "occurrences": 2,
+            "first_seen_run": "children_beds_20260616_edgecrop_support_snap_fix_v18",
+            "last_validated_run": "children_beds_20260616_bed_asset_axis_fix_v19",
+            "superseded_by": "back_to_wall_bed_width_tangent_depth_normal",
+            "observation": "The twin-bed pose reports showed correct semantic front yaw and correct bbox footprint, but the final GLB still looked rotated because Blender assembly ignores `front_yaw_offset_degrees` and the Trellis2 bed mesh had its raw horizontal long axis on local X while the target bed length was stored on local Y.",
+            "latest_observation": "In v19, setting `asset_local_yaw_offset_degrees=270` for both north-wall beds fixed the visible bed headboard/footboard pose. The first repair was later undone by reused asset pose prior metadata, so the same repair had to run again after `post_asset_reused_asset_pose_prior`.",
+            "suggested_use": "For bed/sofa objects with high-confidence back-to-wall relations, inspect the raw GLB horizontal extents after asset generation. If the raw local long axis differs from the target local long axis, set `asset_local_yaw_offset_degrees = desired_front_yaw - render_yaw` and rebuild the asset registry. Run this repair after reused pose priors as well as after initial asset preparation."
+        },
+        {
+            "id": "back_to_wall_bed_width_tangent_depth_normal",
+            "status": "skill",
+            "occurrences": 4,
+            "first_seen_run": "flow2_generalization_20260616_lamp_desk_pose_fix",
+            "last_validated_run": "flow2_fixed_reuse_assets_20260617",
+            "observation": "Four bedroom reference runs showed bed visual pose failures when the pipeline forced the numerically larger bed footprint dimension onto the wall-normal axis. In front or near-front bedroom references, `width` is the headboard/tangent direction and `length` is the room-depth direction even when width >= length after reference scale estimation.",
+            "suggested_use": "For back-to-wall beds/sofas, set footprint orientation by semantic axes: north/south walls use footprint yaw 0 mod 180 so width is x/tangent and length is y/depth; east/west walls use footprint yaw 90 mod 180. Mesh-local yaw should align the raw asset wide axis to that tangent fallback. Only let detected headboard/backrest geometry override it when the candidate preserves the tangent wide axis or has high confidence."
+        },
+        {
+            "id": "door_parametric_fallback_must_not_trigger_on_thinness_only",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_generalization_20260616_lamp_desk_pose_fix/img0610_211046",
+            "last_validated_run": "flow2_fixed_reuse_assets_20260617/img0610_211046",
+            "observation": "The closet door looked broken because parametric fallback replaced a readable Trellis2 door with an 11K procedural asset. The original fallback backup was a 918K Trellis2 GLB; the only blocking QA warning was wall-thinness/extreme-axis compression.",
+            "suggested_use": "For door/closet-door wall assets, keep the Trellis2/reused asset when the only QA issues are thin footprint or extreme axis compression. Use parametric fallback only for real missing files, component policy failures, fragmentation, illegible assets, or white-base/artifact failures."
+        },
+        {
+            "id": "oblique_storage_bbox_side_wall_affinity",
+            "status": "reference",
+            "occurrences": 2,
+            "first_seen_run": "flow2_generalization_20260616_lamp_desk_pose_fix",
+            "last_validated_run": "flow2_fixed_reuse_assets_20260617",
+            "observation": "Right-wall storage was repeatedly misread as back-wall storage in oblique bedroom references: the first bedroom's right dresser/small side table and the children-bedroom cream wardrobe. Their bboxes were near the right side but not always extreme enough for the old edge threshold, and the old wall-affinity module was disabled or gated by global-order reliability.",
+            "suggested_use": "Run wall-affinity arbitration even when global ordering is reliable. For floor storage/table branch objects only, allow relaxed side-wall thresholds from reference bbox center/right-edge evidence; do not apply the relaxation to beds, rugs, or free decor."
+        },
+        {
+            "id": "single_bed_visual_cluster_shift_must_not_apply_to_multi_bed_rows",
+            "status": "skill",
+            "occurrences": 3,
+            "first_seen_run": "flow2_good_result_skill_repair2_20260617/img0614_203919",
+            "last_validated_run": "flow2_good_result_skill_repair4_20260617/img0614_203919",
+            "observation": "The single-bed visual-cluster lateral shift recovered the third bedroom by moving the bed, bedside tables, tabletop children, rug, and bed-wall art as one branch. When the same rule was applied to a two-bed children bedroom, it moved only `right_twin_bed`, the shared nightstand, and rug leftward, breaking the multi-bed row that had already been correct.",
+            "suggested_use": "Only run `bed_visual_cluster_lateral_reference_alignment` when there is exactly one bed/sofa anchor in the final plan. For multi-bed rows, use `multi_bed_wall_row_alignment`, shared-bedside placement, and reference-order constraints; any lateral correction must move the entire bed row as one unit, not one bed branch."
+        },
+        {
+            "id": "same_wall_door_storage_separation_must_skip_closet_doors",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_good_result_skill_repair2_20260617/img0610_211046",
+            "last_validated_run": "flow2_good_result_skill_repair4_20260617/img0614_203919",
+            "observation": "A same-wall door/storage tangent-separation rule is useful for ordinary room doors and wardrobes/cabinets on the same side wall, but it incorrectly treated `closet_double_door` as an ordinary door and moved it relative to a dresser in the third bedroom. Closet doors are usually part of the storage/wall-panel branch, not a walkway door that must be separated from nearby storage.",
+            "suggested_use": "When separating same-wall doors from storage along the wall tangent, classify entry/room doors separately from closet doors. Apply the separation to ordinary doors and storage/cabinets, but skip closet-door assets unless the prompt/reference clearly shows a standalone hinged door distinct from the storage object."
+        },
+        {
+            "id": "scene_density_refiner_must_be_collision_and_physics_gated",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_density_refiner_test_20260618/img0614_203919",
+            "last_validated_run": "flow2_density_refiner_gate_test2_20260618/img0614_203919",
+            "observation": "A second-round visual density agent correctly detected that the children-bedroom render was too spacious and proposed shrinking the room. A naive accepted shrink reduced empty floor space but amplified existing collisions around beds, wall art, and same-wall door/storage branches in early tests.",
+            "suggested_use": "Treat visual room compaction as a candidate. After applying it, rebuild validation and MuJoCo; reject and roll back the candidate if aggregate collision count increases or MuJoCo displacement regresses beyond threshold. Keep before/after comparison images so the visual benefit and geometric cost are both inspectable."
+        },
+        {
+            "id": "scene_density_agent_prompt_must_stay_inline",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_density_refiner_gate_test_20260618/img0614_203919",
+            "last_validated_run": "flow2_density_refiner_smoke_20260618/img0614_203919",
+            "observation": "The first density-refiner prompt included every object and exceeded the 12KB inline threshold, causing Codex to receive a short instruction to read the saved request file. In one full run the density agent timed out after 900 seconds without writing a response. Compacting the plan snapshot to main anchors and omitting supported tabletop children reduced the prompt to about 8.7KB and returned in about 21 seconds.",
+            "suggested_use": "For small visual QA/refiner agents, keep prompts below the inline threshold. Summarize only the geometry relevant to the visual decision and omit support children when they do not affect that decision."
+        },
+        {
+            "id": "room_compaction_should_preserve_wall_tangent_spacing",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_density_refiner_test_20260618/img0614_203919",
+            "last_validated_run": "flow2_density_refiner_gate_test2_20260618/img0614_203919",
+            "observation": "Uniformly scaling all object centers by room width and length ratios made the room visually denser but compressed same-row bed/nightstand spacing, wall-art spacing, and same-wall door/storage tangent spacing. A better shell-compaction step moves wall-normal coordinates with the changed wall boundary while preserving same-wall tangent coordinates and most first-round relative layout.",
+            "suggested_use": "When shrinking room size as a post-process, compact the room shell rather than uniformly scaling every object center. East/west wall anchors should follow x wall-normal movement while preserving y; north/south wall anchors should follow y wall-normal movement while preserving x; free objects should preserve lateral spacing unless room bounds require clamping."
+        },
+        {
+            "id": "bed_canonical_front_must_be_mesh_local_not_semantic_offset",
+            "status": "skill",
+            "occurrences": 3,
+            "first_seen_run": "children_beds_20260616_bed_asset_axis_fix_v19",
+            "last_validated_run": "flow2_functional_clusters_density_postclamp_20260618/img0614_203919",
+            "observation": "The left and right twin beds had the same correct semantic pose target, but only the left bed rendered wrong. The asset-canonical-front report showed the left bed raw front was +x while the right bed raw front was -y. The merge step wrote this into `front_yaw_offset_degrees`, but Blender assembly ignores that field for physical mesh rotation, and later back-to-wall pose repair overwrote the semantic offset. The needed correction is mesh-local normalization through `asset_local_yaw_offset_degrees`.",
+            "suggested_use": "For bed assets, treat canonical-front detection as raw mesh-local metadata. Normalize the asset so the local bed front matches the pipeline bed default before enforcing wall pose. Store the raw canonical front for diagnostics, but apply the physical correction through `asset_local_yaw_offset_degrees` and make later back-to-wall repair trust that normalization."
+        },
+        {
+            "id": "desk_chair_tuck_requires_actual_overlap_placement",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_functional_clusters_density_postclamp_20260618/img0614_203919",
+            "last_validated_run": "flow2_functional_clusters_density_postclamp_20260618/img0614_203919",
+            "observation": "The children-bedroom left workstation was correctly recognized as a desk+chair functional cluster and collision code allowed the pair to overlap, but side-wall lateral packing still placed the chair beside the desk with ordinary positive clearance. Because no module actually moved the chair under the desk, the render could never show the intended tuck.",
+            "suggested_use": "When a desk_workstation or table_seating_cluster has an anchor table and facing chair, execute a geometric tuck step: move the chair toward the table along the chair-table axis, center or clamp it along the table span, keep it facing the table, and allow controlled footprint overlap. Collision exemptions should only validate this relation, not create it."
+        },
+        {
+            "id": "per_wall_relation_audit_must_run_after_density_or_late_layout_changes",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_current_density_alias_cap10_debug_20260618/img0610_113657",
+            "last_validated_run": "flow2_current_density_alias_cap10_debug_20260618/img0610_113657",
+            "observation": "The density refiner shrank the room and preserved global image order, but `right_door` and `wardrobe` on wall_east overlapped along the wall tangent. The hypergraph had a same-wall storage-door cluster, yet no post-density per-wall audit reran before collision gating, so the candidate was rejected even though a local wall-tangent move fixed the issue.",
+            "suggested_use": "After room compaction, final polish, pose repair, or any late anchor move, rerun a per-wall relation audit. For each wall, group wall-attached panels and against-wall storage/table anchors, check wall-local tangent span overlap/gap, and repair ordinary room door vs storage conflicts by moving storage along the wall tangent while preserving wall contact and supported children. Keep closet doors out of the ordinary entry-door separation rule."
+        },
+        {
+            "id": "wall_supported_floor_furniture_needs_physical_floor_collision_domain",
+            "status": "skill",
+            "occurrences": 3,
+            "first_seen_run": "flow2_full_two_stage_rerun_20260619/img0610_113657",
+            "last_validated_run": "flow2_full_two_stage_rerun_20260619/img0610_113657",
+            "observation": "`right_nightstand` visibly penetrated the right-wall `wardrobe`, but `aggregate_collision_report` reported zero conflicts because it only compared sibling branches with the same parent. The wardrobe was parented/supported by `wall_east`, while the nightstand was under `floor`, even though both occupy the same physical floor volume.",
+            "suggested_use": "Run a cross-parent `physical_floor` collision pass for floor roots whose effective parent is either `floor` or a virtual wall. Include against-wall wardrobes, cabinets, dressers, desks, and similar floor furniture in this domain. When a bed/nightstand visual cluster collides with side-wall storage, move the whole bed cluster away from that wall and preserve wall contact for the storage."
+        },
+        {
+            "id": "front_floor_empty_space_should_use_front_depth_trim",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_front_depth_trim_20260620/img0610_113657",
+            "last_validated_run": "flow2_front_depth_trim_20260620/img0610_113657",
+            "observation": "The bedroom density agent correctly identified large foreground/front-floor emptiness. Generic shell compaction with a 0.10 max shrink previously forced width and depth to both shrink by 0.90 and was rejected; a foreground-only trim kept width at 1.0, shortened room length to 0.84, preserved back-wall bed/nightstand relations, and passed aggregate collision and MuJoCo.",
+            "suggested_use": "When density feedback is dominated by `front_floor` or foreground empty space and the requested depth shrink is stronger than width shrink, use `front_depth_trim`: keep width unchanged, trim the south/front side of room length, translate non-front-wall objects by the removed depth, then rerun support settle, per-wall audit, collision repair, aggregate collision, and MuJoCo before accepting."
+        },
+        {
+            "id": "side_wall_storage_under_window_should_anchor_to_window_segment",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_walllocal_visibleface_fix_20260620/img0610_113657_reuse_assets_two_stage_curtain_dresser_fix2",
+            "last_validated_run": "flow2_walllocal_visibleface_fix_20260620/img0610_113657_reuse_assets_two_stage_curtain_dresser_fix2",
+            "observation": "In the left-window bedroom reference, `left_dresser` was a side-wall storage object visually under the window/curtain group. Earlier same-wall tangent separation and bed-front depth alignment treated the dresser as an object that should be separated from curtains or aligned to the bed front, which pushed it too far toward the camera or too far into the room depth depending on which repair ran last.",
+            "suggested_use": "For side-wall storage with a same-wall window whose reference bbox overlaps or closely aligns in image-x, treat storage/window stacking as a hypothesis rather than a hard rule. First compare storage and window depth/frontness, bbox bottom, and the third-stage endpoint-agent relations. Only anchor the storage to the window/curtain segment when those cues agree; if they contradict, let explicit endpoint/depth relations set the storage tangent span. Allow thin wall layers such as curtains/windows to overlap storage along the wall-normal thickness instead of forcing wall-tangent separation."
+        },
+        {
+            "id": "side_wall_storage_contact_face_must_follow_visible_front_yaw",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_wall_material_20260620/img0610_113657_reuse_assets_wall_material_no_window_fallback",
+            "last_validated_run": "flow2_wall_material_20260620/img0610_113657_storage_front_probe_patch",
+            "observation": "The right-wall wardrobe asset canonical-front report correctly identified the double-door handle side as local `-y`, and a geometry probe also found the `-y` side had sparse protruding handle-like outer-shell vertices. A later floor-storage front repair still rotated the visible handle face to the side because it assumed any east/west wall storage should have its long axis tangent to the wall, effectively treating the cabinet as back-to-wall even though `front_yaw_world=270` was tangent to wall_east and indicated side-face contact.",
+            "suggested_use": "For side-wall wardrobes, dressers, cabinets, and similar storage, solve wall contact from `contact_face` and visible `front_yaw_world` together. If the front yaw is tangent to the wall, infer side-face wall contact and allow the long axis to run along the wall normal; if the front yaw points into the room normal, use back-contact and long axis tangent. Keep canonical-front/handle evidence as asset-local metadata and do not overwrite it merely to satisfy a wall-tangent heuristic."
+        },
+        {
+            "id": "curtain_panel_axis_repair_must_not_use_generic_wall_flat_swap",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_walllocal_visibleface_fix_20260620/img0610_113657_reuse_assets_two_stage_curtain_dresser_fix2",
+            "last_validated_run": "flow2_walllocal_visibleface_fix_20260620/img0610_113657_reuse_assets_two_stage_curtain_dresser_fix2",
+            "observation": "The reference scale prior correctly estimated both curtain panels as broad vertical strips, but the generic wall-asset axis repair saw one curtain's raw Trellis2 bounds as thin in a different local axis and swapped width/length. The later curtain vertical-fit clamp then reduced the swapped length to a tiny value, producing a narrow strange-looking outer curtain panel while the paired panel remained normal.",
+            "suggested_use": "Route curtains/drapes through a curtain-specific axis and scale path. Do not apply generic wall-flat local-axis swaps to curtain panels unless a direct Blender render proves the imported curtain is physically sideways. Preserve the reference bbox vertical extent and semantic panel-width prior, and validate paired curtain panels for symmetric width/height before final render."
+        },
+        {
+            "id": "window_assets_need_thin_fragment_cleanup_not_wall_art_protection",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_wall_fixture_fix_20260621/img0610_211046_reuse_assets_wall_flat_pose_fix",
+            "last_validated_run": "flow2_wall_fixture_fix_20260621/img0610_211046_reuse_assets_wall_flat_pose_fix",
+            "observation": "Protecting all wall-flat assets from broad-thin cleanup preserved legitimate paintings, doors, and curtain panels, but it also preserved Trellis2 window artifacts. In the 2026-06-10 bedroom, the protected window kept an extra protruding thin sheet through the middle; an earlier cleaned window was visibly better because broad-thin components were removed.",
+            "suggested_use": "Do not route windows through the same cleanup protection as wall art. Keep broad-thin artifact cleanup enabled for windows while protecting paintings, posters, mirrors, doors, and curtain panels. Validate windows by direct asset render and final wall-mounted render because the raw window GLB can contain interior blinds, glass sheets, or background fragments that look like a protruding panel in scene."
+        },
+        {
+            "id": "closet_door_storage_same_wall_gap_must_be_checked",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_wall_fixture_fix_20260621/img0610_211046_reuse_assets_wall_flat_pose_fix",
+            "last_validated_run": "flow2_wall_fixture_fix_20260621/img0610_211046_reuse_assets_wall_flat_pose_fix",
+            "observation": "`closet_door` was classified as generic wall_attached because the role detector rejected any object containing `closet`. This bypassed the room-door vs wall-storage tangent audit, so the door could remain far toward the front of the wall even when the reference showed strong depth overlap with the left dresser.",
+            "suggested_use": "Classify `closet door` / `closet_door` as a room door for same-wall relation auditing, while keeping wardrobe/closet furniture out of the door rule. For same-wall door-storage pairs whose reference bboxes overlap strongly along the wall-depth image axis, enforce both a minimum clearance and a maximum wall-tangent gap; correct order alone is not enough."
+        },
+        {
+            "id": "window_single_mesh_shape_failure_needs_asset_candidate_fallback",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_wall_fixture_fix_20260621/img0610_211046_reuse_assets_window_cleanup_door_dresser_fix",
+            "last_validated_run": "flow2_wall_fixture_fix_20260621/img0610_211046_mixed_good_window_two_stage",
+            "observation": "The new Trellis2 window asset looked bad in the final scene because the protruding blinds/frame structure was part of one connected mesh. Enabling broad-thin cleanup did not remove anything (`removed_components=0`) because there was no separable component. Reusing an older cleaned Trellis2 window immediately produced a cleaner wall fixture while keeping the same layout.",
+            "suggested_use": "For windows, run direct front/side asset render QA before accepting the asset. If the window is a single connected mesh with protruding blinds, a thick box frame, or unreadable pane geometry, do not keep trying component cleanup or layout fixes; pick a better candidate from regenerated/history assets or rerun Trellis2 with a stricter window prompt."
+        },
+        {
+            "id": "closet_door_panels_must_merge_before_wall_gap_audit",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_tangent_fix_20260621/img0610_211046_strict_asset_only_alias_two_stage",
+            "last_validated_run": "flow2_depth_tangent_fix_20260621/img0610_211046_strict_asset_only_alias_two_stage",
+            "observation": "The reference closet was split into `closet_door_left` and `closet_door_right`, each with a full door asset and strongly overlapping bboxes. Same-wall relation repair then treated them as separate room doors, so two slabs consumed the left-wall tangent/depth budget and perturbed nearby dresser placement and density refinement.",
+            "suggested_use": "Before support-tree construction and same-wall door/storage auditing, merge adjacent or overlapping closet-door panels into one closet-door assembly. Let the merged assembly participate in ordinary door/storage gap checks once. Do not resolve this by globally skipping closet doors or globally treating each closet-door panel as a separate room door."
+        },
+        {
+            "id": "semantic_wall_attachment_must_materialize_support_relation",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_tangent_fix_20260621/img0610_211046_strict_asset_only_alias_two_stage",
+            "last_validated_run": "flow2_depth_tangent_fix_20260621/img0610_211046_strict_asset_only_alias_two_stage",
+            "observation": "`large_wall_art` had `agent_semantics.wall_relation.mode=attached`, `wall_id=wall_north`, and `support_hint=wall_north`, but no actual `attached_to wall_north` relation. `build_support_tree` only consumes relations, so it defaulted the artwork to floor support and the plan wrote `z=0`, making the back-wall picture disappear in the render.",
+            "suggested_use": "After semantic/relation agents and before `build_support_tree`, materialize high-confidence semantic wall relations into `attached_to` or `against_wall` relations. Reports should explicitly list materialized relations so missing wall fixtures are traceable."
+        },
+        {
+            "id": "canonical_front_must_drive_render_yaw_not_only_effective_yaw",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_tangent_fix_20260621/img0610_211046_strict_asset_only_alias_two_stage",
+            "last_validated_run": "flow2_depth_tangent_fix_20260621/img0610_211046_strict_asset_only_alias_two_stage",
+            "observation": "The left-wall dresser final pose feedback said its drawer front should face into the room, but later storage-front/long-axis repair rewrote `front_yaw_offset_degrees` to satisfy logical `_effective_yaw`. Blender assembly ignores that field as a mesh transform, so the actual GLB can still render the drawer/handle face sideways.",
+            "suggested_use": "For high-confidence canonical-front assets, pose setters must solve against the real rendered front direction: `yaw + footprint_yaw_offset_degrees + asset_local_yaw_offset_degrees + canonical_front_axis`. Keep `front_yaw_offset_degrees` as canonical-front metadata and choose render yaw/footprint to satisfy both target front and long-axis constraints."
+        },
+        {
+            "id": "oblique_camera_visible_front_must_not_force_side_contact",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_tangent_fix_20260621/img0610_211046_strict_asset_only_alias_two_stage",
+            "last_validated_run": "flow2_depth_tangent_fix_20260621/img0610_211046_strict_asset_only_alias_two_stage",
+            "observation": "The left-wall dresser semantic pose said `visible_front_direction=camera` and `front_yaw_world=270`, which a later wall-pose normalizer interpreted as side-face contact and changed the long axis to the wall normal. In the oblique bedroom reference, this was only perspective visibility of the drawer front; physically the dresser still backs against the side wall and should keep its long axis along the wall tangent.",
+            "suggested_use": "For side-wall storage whose reference bbox is not on the image edge, do not infer `left_side/right_side` wall contact solely from a camera-visible front yaw. Treat it as back-contact/tangent long-axis unless stronger side-contact evidence exists, such as edge contact, explicit side-face evidence, or canonical/handle geometry supporting a side-facing cabinet."
+        },
+        {
+            "id": "invalid_wall_id_must_not_default_to_back_wall",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_door_wallart_dresser_fix_20260622/img0610_211046_reuse_assets_two_stage",
+            "last_validated_run": "flow2_door_wallart_dresser_fix_20260622/img0610_211046_reuse_assets_two_stage",
+            "observation": "The wall-pose normalizer treated `wall_id: null`/`wall_id: \"null\"` as `wall_north` because the low-level `_wall_id` helper defaults invalid values to the back wall. This caused the area rug, a floor-covering visual layer, to get a spurious semantic `against wall_north` relation in the report even though the final support stayed on the floor.",
+            "suggested_use": "Wall normalization and support materialization must use an explicit wall-id parser that returns missing for invalid/null values. Floor coverings, rugs, carpets, and other visual floor layers should skip wall-pose normalization entirely."
+        },
+        {
+            "id": "floor_furniture_description_wall_words_must_not_trigger_wall_attachment",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_residual_fix_20260622/img0610_113657_reuse_assets_sidewall_soft_order_fix",
+            "last_validated_run": "flow2_depth_residual_fix_20260622/img0610_113657_reuse_assets_sidewall_soft_order_fix",
+            "observation": "`queen_bed` contained the free-form phrase `integrated soft details: framed wall art` in its description. The wall-attached detector searched description text for `wall art`, misclassified the bed as wall-attached, and then the rug-underlay detector rejected the bed as an underlay target. This left the `area_rug near queen_bed` relation unused and the rug stayed in the foreground instead of under the bed.",
+            "suggested_use": "Wall-attached object detection should rely on semantic class, layout role, explicit wall_relation, and id/category identity. Do not let free-form asset-prompt or description text from a composite floor asset turn the parent bed/sofa/storage object into a wall-mounted fixture."
+        },
+        {
+            "id": "same_side_wall_left_right_relations_are_soft_tangent_cues",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_residual_fix_20260622/img0610_113657_reuse_assets_sidewall_soft_order_fix",
+            "last_validated_run": "flow2_depth_residual_fix_20260622/img0610_113657_reuse_assets_sidewall_soft_order_fix",
+            "observation": "The right-wall `wardrobe` and `right_door` already had a wall-local door/storage tangent audit that separated them without overlap, but an ordinary relation-verifier pair `right_door right_of wardrobe` was still treated as a hard spatial relation. Because east/west side-wall left/right maps to the room y axis, this perspective relation fought the wall-local depth/corner module and caused false reference/hypergraph failures.",
+            "suggested_use": "For two objects sharing wall_east or wall_west, image-space `left_of/right_of` should be softened whether it comes from the spatial-order agent or the relation verifier. Use wall-local depth, corner affinity, tangent overlap/gap, and room-door/storage separation as the hard same-wall constraints."
+        },
+        {
+            "id": "fine_side_wall_edge_residuals_must_gate_acceptance",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_img0610_113657_image2_assets_split_curtains_fineorder_scale_v3",
+            "last_validated_run": "flow2_img0610_113657_image2_assets_split_curtains_fineorder_scale_v3",
+            "observation": "The v2 fine stage accepted because it only validated collision and MuJoCo regressions for fixes it had explicitly attempted. The reference spatial-order agent had not emitted the left-wall botanical art vs left dresser tangent-depth relation or the left dresser vs bed front-edge relation, so those constraints were never checked even though the render still showed the wall art, side-wall dresser, and bed depth/scale mismatch. In v3, the side-wall edge residual pass found the missing relation, extended the left dresser along the wall tangent, moved the wall art into the dresser span, shrank the left curtain slot beside the hard window panel, then extended the bed front edge to match the dresser.",
+            "suggested_use": "Fine-stage acceptance must reject unresolved required spatial residuals, not just collision or MuJoCo regressions. For west/east side-wall wall decor over or near floor storage, compare wall-tangent edge spans instead of only object centers; if the target slot falls outside storage, scale the storage along the wall tangent with its back edge anchored, then scale the bed/front anchor if its front edge should match. Treat window panels as hard blockers and curtains as adjustable assembly slots, then rerun window-curtain assembly, aggregate collision, and MuJoCo before accepting."
+        },
+        {
+            "id": "fine_edge_relations_need_cluster_and_vertical_edge_residuals",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_img0610_113657_image2_assets_split_curtains_fineorder_scale_v4",
+            "last_validated_run": "flow2_img0610_113657_image2_assets_split_curtains_fineorder_scale_v4",
+            "observation": "The first side-wall residual version still over-extended the left dresser because the left window/curtain cluster reserved a loose half-curtain slot and only compacted the side selected for the wall-art target. It also did not create residuals for the white door vs bed outer/front edge or for the bed top vs bedside table-lamp top, so those reference edge relationships could pass untested. The reference shows the door bottom/front edge close to the bed bottom/front edge and the bed top nearly level with both table-lamp tops.",
+            "suggested_use": "When a fixed window/curtain cluster constrains nearby wall decor, compact the whole cluster symmetrically: keep the order half-curtain, window, half-curtain, but shrink/reposition both curtain halves beside the hard window panel before extending storage. Add required edge residuals for side-wall doors whose reference bottom/front edge matches the bed, and add a narrow bed/table-lamp top-edge residual that scales the grounded bed height when reference tops are nearly equal. These residuals must be reported and gate fine-stage acceptance if unresolved."
+        },
+        {
+            "id": "rigid_wall_decor_must_not_be_integrated_into_bed_assets",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_depth_residual_fix_20260622/img0610_113657_reuse_assets_underlay_sidewall_fix",
+            "last_validated_run": "flow2_depth_residual_fix_20260622/img0610_113657_reuse_assets_underlay_sidewall_fix",
+            "observation": "The current run reused a scene graph that omitted the large landscape art above the bed and instead placed `framed wall art` inside `queen_bed` integrated soft details. Older good runs had a separate `landscape_art`/`landscape_wall_art` object. The semantic agent noticed the missing art in notes, but the merge layer previously could only update existing objects and could not add the missing wall-mounted object.",
+            "suggested_use": "Treat framed wall art, paintings, pictures, posters, mirrors, and clocks as rigid wall-attached objects, never as bed/sofa textile details. Scrub these phrases from bed/sofa integrated-detail prompts, and allow the semantic agent to materialize high-confidence missing rigid wall-mounted objects with an `attached_to wall_*` relation."
+        }
+    ]
+}

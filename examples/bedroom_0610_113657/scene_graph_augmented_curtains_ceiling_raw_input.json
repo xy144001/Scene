@@ -1,0 +1,5350 @@
+{
+  "scene_id": "layout_tree_sage_warm_bedroom",
+  "room_type": "bedroom",
+  "style": "warm transitional bedroom with wood furniture and neutral textiles",
+  "description": "Infer a complete static indoor scene from the attached reference image. Use the image as the primary source for room type, style, object identities, object counts, sizes, poses, wall contacts, support relations, and left/right/front/back spatial relationships. Do not assume an office or any other preset scene unless it is visible in the image. TreeSAGE Flow 2 lays out rigid or approximately rigid objects only; pillows, cushions, blankets, bedding, duvets, quilts, bed throws, and other soft bed textiles should be treated as visual details integrated into the bed or sofa, not as separate scene objects. Includes beige curtains at the left window and a round flush-mount ceiling light.",
+  "room": {
+    "width": 5.2,
+    "length": 4.6,
+    "height": 2.8,
+    "materials": {
+      "schema": "tree_sage_wall_material_plan_v1",
+      "source": "reference_image_bright_wall_color_heuristic",
+      "global_wall": {
+        "texture_type": "solid_color",
+        "base_color": [
+          0.8205,
+          0.7727,
+          0.7205
+        ],
+        "roughness": 0.78,
+        "alpha": 1.0
+      },
+      "walls": {
+        "wall_north": {
+          "texture_type": "solid_color",
+          "base_color": [
+            0.8205,
+            0.7727,
+            0.7205
+          ],
+          "roughness": 0.78,
+          "alpha": 1.0
+        },
+        "wall_south": {
+          "texture_type": "solid_color",
+          "base_color": [
+            0.8205,
+            0.7727,
+            0.7205
+          ],
+          "roughness": 0.78,
+          "alpha": 1.0
+        },
+        "wall_west": {
+          "texture_type": "solid_color",
+          "base_color": [
+            0.8205,
+            0.7727,
+            0.7205
+          ],
+          "roughness": 0.78,
+          "alpha": 1.0
+        },
+        "wall_east": {
+          "texture_type": "solid_color",
+          "base_color": [
+            0.8205,
+            0.7727,
+            0.7205
+          ],
+          "roughness": 0.78,
+          "alpha": 1.0
+        }
+      },
+      "ceiling": {
+        "texture_type": "solid_color",
+        "base_color": [
+          0.8205,
+          0.7727,
+          0.7205
+        ],
+        "roughness": 0.82,
+        "alpha": 1.0
+      },
+      "floor": {
+        "texture_type": "sampled_image_texture",
+        "base_color": [
+          0.4392,
+          0.3451,
+          0.251
+        ],
+        "roughness": 0.82,
+        "alpha": 1.0,
+        "source": "reference_image_floor_color_heuristic",
+        "texture_image": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/floor_material_sampled_texture.png"
+      }
+    }
+  },
+  "objects": [
+    {
+      "id": "queen_bed",
+      "category": "bed",
+      "description": "upholstered queen bed with beige headboard, white bedding, green pillows and green bed throw integrated as bed details",
+      "asset_prompt": "isolated beige upholstered queen bed with tall rectangular headboard, white quilted bedding, layered pillows, green accent pillows, and folded green throw blanket, no room",
+      "image_bbox": [
+        0.231,
+        0.46,
+        0.754,
+        0.857
+      ],
+      "priority": "furniture",
+      "dimensions": {
+        "width": 1.75,
+        "length": 2.15,
+        "height": 0.935
+      },
+      "agent_semantics": {
+        "semantic_class": "floor_furniture",
+        "layout_role": "floor_branch_anchor",
+        "pose_sensitive": true,
+        "expected_pose": "long_axis_front_back",
+        "wall_relation": {
+          "mode": "against",
+          "wall_id": "wall_north",
+          "confidence": 0.92
+        },
+        "pose_constraints": {
+          "expected_pose": "long_axis_front_back",
+          "long_axis_world": "y",
+          "wall_id": "wall_north",
+          "contact_face": "back",
+          "front_yaw_world": 270.0,
+          "visible_front_direction": "camera",
+          "confidence": 0.96,
+          "evidence": "headboard is against the back wall and bed extends toward the camera",
+          "facing_target": "landscape_wall_art"
+        },
+        "reference_evidence": "bed is centered on the back wall with upholstered headboard touching the wall",
+        "support_hint": "floor",
+        "functional_cluster_memberships": [
+          {
+            "cluster_id": "functional_rug_underlay_cluster_02",
+            "type": "rug_underlay_cluster",
+            "role": "object_on_visual_underlay"
+          }
+        ],
+        "functional_cluster_roles": {
+          "functional_rug_underlay_cluster_02": {
+            "type": "rug_underlay_cluster",
+            "role": "object_on_visual_underlay"
+          }
+        },
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "medium",
+          "regeneration_hint": "one coherent upholstered bed assembly with bedding integrated, no separate loose textile objects",
+          "failure_action": "regenerate",
+          "confidence": 0.96,
+          "evidence": "Bed is one furniture asset with headboard, frame, legs, pillows, bedding, and throw integrated as details.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R01",
+        "bbox": [
+          0.231,
+          0.46,
+          0.754,
+          0.857
+        ],
+        "spatial_alias": "center_bed",
+        "visible_instance_description": "large upholstered bed centered on back wall with beige headboard and white bedding",
+        "confidence": 0.98,
+        "ambiguous_with": [],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R01 tightly covers the central bed and headboard area beneath the landscape art.",
+        "duplicate_key": "floor_furniture",
+        "duplicate_count": 3
+      },
+      "reference_depth": {
+        "frontness": 0.975695,
+        "backness": 0.024305,
+        "normalized_depth": 0.975695,
+        "raw_depth_value": 282.352356,
+        "confidence": 0.66,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            334,
+            499,
+            1092,
+            931
+          ],
+          "bbox_area_ratio": 0.208235,
+          "center_depth": 282.346771,
+          "median_depth": 261.050781,
+          "central_median_depth": 282.352356,
+          "p25_depth": 70.81739,
+          "p75_depth": 314.27356
+        },
+        "slice_depths": [
+          {
+            "index": 0,
+            "role": "rear_or_top",
+            "bbox": [
+              0.231,
+              0.46,
+              0.754,
+              0.5394
+            ],
+            "raw_depth_value": 55.617523,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                499,
+                1092,
+                586
+              ],
+              "bbox_area_ratio": 0.041936,
+              "center_depth": 55.100117,
+              "median_depth": 47.015388,
+              "central_median_depth": 55.617523,
+              "p25_depth": 42.392872,
+              "p75_depth": 61.688599
+            },
+            "normalized_depth": 0.02223,
+            "frontness": 0.02223,
+            "backness": 0.97777
+          },
+          {
+            "index": 1,
+            "role": "middle",
+            "bbox": [
+              0.231,
+              0.5394,
+              0.754,
+              0.6188
+            ],
+            "raw_depth_value": 99.548035,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                585,
+                1092,
+                673
+              ],
+              "bbox_area_ratio": 0.042418,
+              "center_depth": 102.957855,
+              "median_depth": 81.687958,
+              "central_median_depth": 99.548035,
+              "p25_depth": 59.461342,
+              "p75_depth": 103.006508
+            },
+            "normalized_depth": 0.206966,
+            "frontness": 0.206966,
+            "backness": 0.793034
+          },
+          {
+            "index": 2,
+            "role": "middle",
+            "bbox": [
+              0.231,
+              0.6188,
+              0.754,
+              0.6982
+            ],
+            "raw_depth_value": 283.083313,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                672,
+                1092,
+                759
+              ],
+              "bbox_area_ratio": 0.041936,
+              "center_depth": 282.346771,
+              "median_depth": 271.955566,
+              "central_median_depth": 283.083313,
+              "p25_depth": 203.016907,
+              "p75_depth": 299.457611
+            },
+            "normalized_depth": 0.978769,
+            "frontness": 0.978769,
+            "backness": 0.021231
+          },
+          {
+            "index": 3,
+            "role": "middle",
+            "bbox": [
+              0.231,
+              0.6982,
+              0.754,
+              0.7776
+            ],
+            "raw_depth_value": 317.936493,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                758,
+                1092,
+                845
+              ],
+              "bbox_area_ratio": 0.041936,
+              "center_depth": 318.188995,
+              "median_depth": 316.760742,
+              "central_median_depth": 317.936493,
+              "p25_depth": 314.208405,
+              "p75_depth": 318.461914
+            },
+            "normalized_depth": 1.0,
+            "frontness": 1.0,
+            "backness": 0.0
+          },
+          {
+            "index": 4,
+            "role": "front_or_bottom",
+            "bbox": [
+              0.231,
+              0.7776,
+              0.754,
+              0.857
+            ],
+            "raw_depth_value": 315.495972,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                844,
+                1092,
+                931
+              ],
+              "bbox_area_ratio": 0.041936,
+              "center_depth": 316.010132,
+              "median_depth": 314.299377,
+              "central_median_depth": 315.495972,
+              "p25_depth": 289.442352,
+              "p75_depth": 316.018311
+            },
+            "normalized_depth": 1.0,
+            "frontness": 1.0,
+            "backness": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "left_nightstand",
+      "category": "nightstand",
+      "description": "small two-drawer wood nightstand to the left of the bed",
+      "asset_prompt": "isolated mid-century warm wood two-drawer nightstand with slim black horizontal handles and tapered legs",
+      "image_bbox": [
+        0.22,
+        0.59,
+        0.34,
+        0.743
+      ],
+      "priority": "support",
+      "dimensions": {
+        "width": 0.62,
+        "length": 0.45,
+        "height": 0.62
+      },
+      "agent_semantics": {
+        "semantic_class": "table_anchor",
+        "layout_role": "floor_branch_anchor",
+        "pose_sensitive": true,
+        "expected_pose": "long_axis_left_right",
+        "wall_relation": {
+          "mode": "against",
+          "wall_id": "wall_north",
+          "confidence": 0.83
+        },
+        "pose_constraints": {
+          "expected_pose": "long_axis_left_right",
+          "long_axis_world": "x",
+          "wall_id": "wall_north",
+          "contact_face": "back",
+          "front_yaw_world": 270.0,
+          "visible_front_direction": "camera",
+          "confidence": 0.92,
+          "evidence": "drawer front faces camera while the rear is near the back wall",
+          "facing_target": "queen_bed"
+        },
+        "reference_evidence": "wood nightstand sits immediately left of the bed near the back wall",
+        "support_hint": "floor",
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "one solid cabinet body with attached drawers, handles, and legs",
+          "failure_action": "regenerate",
+          "confidence": 0.95,
+          "evidence": "Small wood cabinet should remain one coherent nightstand; handles and legs may be separate parts.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R02",
+        "bbox": [
+          0.22,
+          0.59,
+          0.34,
+          0.743
+        ],
+        "spatial_alias": "left_bedside_nightstand",
+        "visible_instance_description": "wood two-drawer nightstand on the left side of the bed",
+        "confidence": 0.95,
+        "ambiguous_with": [
+          "right_nightstand"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R02 encloses the nightstand immediately left of the bed, below the left lamp.",
+        "duplicate_key": "table_anchor",
+        "duplicate_count": 2
+      },
+      "reference_depth": {
+        "frontness": 0.605287,
+        "backness": 0.394713,
+        "normalized_depth": 0.605287,
+        "raw_depth_value": 194.269089,
+        "confidence": 0.54,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            318,
+            640,
+            493,
+            807
+          ],
+          "bbox_area_ratio": 0.018585,
+          "center_depth": 266.544067,
+          "median_depth": 77.565895,
+          "central_median_depth": 194.269089,
+          "p25_depth": 74.148987,
+          "p75_depth": 301.857666
+        }
+      }
+    },
+    {
+      "id": "right_nightstand",
+      "category": "nightstand",
+      "description": "small two-drawer wood nightstand to the right of the bed",
+      "asset_prompt": "isolated mid-century warm wood two-drawer nightstand with slim black horizontal handles and tapered legs",
+      "image_bbox": [
+        0.664,
+        0.59,
+        0.787,
+        0.743
+      ],
+      "priority": "support",
+      "dimensions": {
+        "width": 0.62,
+        "length": 0.45,
+        "height": 0.62
+      },
+      "agent_semantics": {
+        "semantic_class": "table_anchor",
+        "layout_role": "floor_branch_anchor",
+        "pose_sensitive": true,
+        "expected_pose": "long_axis_left_right",
+        "wall_relation": {
+          "mode": "against",
+          "wall_id": "wall_north",
+          "confidence": 0.83
+        },
+        "pose_constraints": {
+          "expected_pose": "long_axis_left_right",
+          "long_axis_world": "x",
+          "wall_id": "wall_north",
+          "contact_face": "back",
+          "front_yaw_world": 270.0,
+          "visible_front_direction": "camera",
+          "confidence": 0.92,
+          "evidence": "drawer front faces camera while the rear is near the back wall",
+          "facing_target": "queen_bed"
+        },
+        "reference_evidence": "wood nightstand sits immediately right of the bed near the back wall",
+        "support_hint": "floor",
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "one solid cabinet body with attached drawers, handles, and legs",
+          "failure_action": "regenerate",
+          "confidence": 0.95,
+          "evidence": "Matching wood nightstand is one rigid cabinet with drawers, pulls, and legs.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R03",
+        "bbox": [
+          0.664,
+          0.59,
+          0.787,
+          0.743
+        ],
+        "spatial_alias": "right_bedside_nightstand",
+        "visible_instance_description": "wood two-drawer nightstand on the right side of the bed",
+        "confidence": 0.95,
+        "ambiguous_with": [
+          "left_nightstand"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R03 encloses the matching nightstand immediately right of the bed, below the right lamp.",
+        "duplicate_key": "table_anchor",
+        "duplicate_count": 2
+      },
+      "reference_depth": {
+        "frontness": 0.09466,
+        "backness": 0.90534,
+        "normalized_depth": 0.09466,
+        "raw_depth_value": 72.841423,
+        "confidence": 0.54,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            961,
+            640,
+            1140,
+            807
+          ],
+          "bbox_area_ratio": 0.01901,
+          "center_depth": 73.005432,
+          "median_depth": 72.935234,
+          "central_median_depth": 72.841423,
+          "p25_depth": 72.266472,
+          "p75_depth": 275.001312
+        }
+      }
+    },
+    {
+      "id": "left_table_lamp",
+      "category": "table lamp",
+      "description": "gray ceramic table lamp with cream fabric shade on left nightstand",
+      "asset_prompt": "isolated gray ceramic table lamp with textured vase-shaped base and warm cream cylindrical fabric shade",
+      "image_bbox": [
+        0.253,
+        0.459,
+        0.337,
+        0.595
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.30250000000000005,
+        "length": 0.28,
+        "height": 0.55
+      },
+      "agent_semantics": {
+        "semantic_class": "lighting",
+        "layout_role": "tabletop_child",
+        "pose_sensitive": true,
+        "expected_pose": "upright_on_support",
+        "wall_relation": {
+          "mode": "near",
+          "wall_id": "wall_north",
+          "confidence": 0.72
+        },
+        "pose_constraints": {
+          "expected_pose": "upright_on_support",
+          "long_axis_world": "none",
+          "wall_id": "wall_north",
+          "contact_face": "unknown",
+          "front_yaw_world": "null",
+          "visible_front_direction": "unknown",
+          "confidence": 0.94,
+          "evidence": "lamp stands vertically on the left nightstand",
+          "facing_target": "left_nightstand"
+        },
+        "reference_evidence": "gray ceramic lamp with cream shade is on the left nightstand",
+        "support_hint": "left_nightstand",
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "single lamp with connected shade, stem, and ceramic base, no loose fragments",
+          "failure_action": "regenerate",
+          "confidence": 0.94,
+          "evidence": "Lamp consists of shade, neck, and vase-like base that should read as one object.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R04",
+        "bbox": [
+          0.253,
+          0.459,
+          0.337,
+          0.595
+        ],
+        "spatial_alias": "left_bedside_lamp",
+        "visible_instance_description": "gray ceramic lamp with cream shade on left nightstand",
+        "confidence": 0.96,
+        "ambiguous_with": [
+          "right_table_lamp"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R04 surrounds the lamp sitting on the left nightstand.",
+        "duplicate_key": "lighting",
+        "duplicate_count": 2
+      },
+      "reference_depth": {
+        "frontness": 0.009073,
+        "backness": 0.990927,
+        "normalized_depth": 0.009073,
+        "raw_depth_value": 52.48893,
+        "confidence": 0.46,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            366,
+            498,
+            488,
+            647
+          ],
+          "bbox_area_ratio": 0.01156,
+          "center_depth": 44.605335,
+          "median_depth": 52.250732,
+          "central_median_depth": 52.48893,
+          "p25_depth": 33.778111,
+          "p75_depth": 61.368114
+        }
+      }
+    },
+    {
+      "id": "right_table_lamp",
+      "category": "table lamp",
+      "description": "gray ceramic table lamp with cream fabric shade on right nightstand",
+      "asset_prompt": "isolated gray ceramic table lamp with textured vase-shaped base and warm cream cylindrical fabric shade",
+      "image_bbox": [
+        0.684,
+        0.459,
+        0.755,
+        0.599
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.30250000000000005,
+        "length": 0.28,
+        "height": 0.55
+      },
+      "agent_semantics": {
+        "semantic_class": "lighting",
+        "layout_role": "tabletop_child",
+        "pose_sensitive": true,
+        "expected_pose": "upright_on_support",
+        "wall_relation": {
+          "mode": "near",
+          "wall_id": "wall_north",
+          "confidence": 0.72
+        },
+        "pose_constraints": {
+          "expected_pose": "upright_on_support",
+          "long_axis_world": "none",
+          "wall_id": "wall_north",
+          "contact_face": "unknown",
+          "front_yaw_world": "null",
+          "visible_front_direction": "unknown",
+          "confidence": 0.94,
+          "evidence": "lamp stands vertically on the right nightstand",
+          "facing_target": "right_nightstand"
+        },
+        "reference_evidence": "gray ceramic lamp with cream shade is on the right nightstand",
+        "support_hint": "right_nightstand",
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "single lamp with connected shade, stem, and ceramic base, no loose fragments",
+          "failure_action": "regenerate",
+          "confidence": 0.94,
+          "evidence": "Lamp has a coherent shade and ceramic base structure on the nightstand.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R05",
+        "bbox": [
+          0.684,
+          0.459,
+          0.755,
+          0.599
+        ],
+        "spatial_alias": "right_bedside_lamp",
+        "visible_instance_description": "gray ceramic lamp with cream shade on right nightstand",
+        "confidence": 0.96,
+        "ambiguous_with": [
+          "left_table_lamp"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R05 surrounds the lamp sitting on the right nightstand.",
+        "duplicate_key": "lighting",
+        "duplicate_count": 2
+      },
+      "reference_depth": {
+        "frontness": 0.021705,
+        "backness": 0.978295,
+        "normalized_depth": 0.021705,
+        "raw_depth_value": 55.492699,
+        "confidence": 0.31,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            990,
+            498,
+            1094,
+            651
+          ],
+          "bbox_area_ratio": 0.010119,
+          "center_depth": 58.28553,
+          "median_depth": 58.168671,
+          "central_median_depth": 55.492699,
+          "p25_depth": 34.589516,
+          "p75_depth": 61.339951
+        }
+      }
+    },
+    {
+      "id": "landscape_wall_art",
+      "category": "framed wall art",
+      "description": "large framed landscape print mounted above the bed",
+      "asset_prompt": "isolated rectangular framed landscape painting print with muted green mountains, lake, white mat, and thin dark frame",
+      "image_bbox": [
+        0.41,
+        0.26,
+        0.606,
+        0.428
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 1.25,
+        "length": 0.8250000000000001,
+        "height": 0.75
+      },
+      "agent_semantics": {
+        "semantic_class": "wall_attached",
+        "layout_role": "wall_branch",
+        "pose_sensitive": true,
+        "expected_pose": "wall_flush",
+        "wall_relation": {
+          "mode": "attached",
+          "wall_id": "wall_north",
+          "confidence": 0.98
+        },
+        "pose_constraints": {
+          "expected_pose": "wall_flush",
+          "long_axis_world": "x",
+          "wall_id": "wall_north",
+          "contact_face": "back",
+          "front_yaw_world": 270.0,
+          "visible_front_direction": "camera",
+          "confidence": 0.98,
+          "evidence": "framed landscape is mounted flat on the back wall above the bed",
+          "facing_target": "queen_bed"
+        },
+        "reference_evidence": "large framed landscape print is centered above the bed",
+        "support_hint": "wall_north",
+        "asset_component_policy": {
+          "component_policy": "single_integrated_panel",
+          "allow_disconnected_detail": false,
+          "requires_backing_body": true,
+          "max_fragment_tolerance": "very_low",
+          "regeneration_hint": "one continuous framed backing panel with landscape printed on it, no separate scenery pieces",
+          "failure_action": "procedural_fallback",
+          "confidence": 0.98,
+          "evidence": "Framed landscape print is a flat wall panel with frame, mat, and image surface.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R06",
+        "bbox": [
+          0.41,
+          0.26,
+          0.606,
+          0.428
+        ],
+        "spatial_alias": "center_back_wall_landscape_art",
+        "visible_instance_description": "large framed landscape print above the bed",
+        "confidence": 0.98,
+        "ambiguous_with": [
+          "left_wall_botanical_art"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R06 encloses the prominent framed landscape centered over the headboard.",
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5
+      },
+      "reference_depth": {
+        "frontness": 0.0,
+        "backness": 1.0,
+        "normalized_depth": 0.0,
+        "raw_depth_value": 38.413048,
+        "confidence": 0.5,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            593,
+            282,
+            878,
+            465
+          ],
+          "bbox_area_ratio": 0.033166,
+          "center_depth": 38.451317,
+          "median_depth": 38.343735,
+          "central_median_depth": 38.413048,
+          "p25_depth": 37.90218,
+          "p75_depth": 38.737518
+        }
+      }
+    },
+    {
+      "id": "tall_wardrobe",
+      "category": "wardrobe",
+      "description": "tall warm wood wardrobe with two doors and black vertical pulls on right wall area",
+      "asset_prompt": "isolated tall warm walnut wood wardrobe cabinet with two flat doors, black vertical handles, simple modern trim, standing on floor",
+      "image_bbox": [
+        0.801,
+        0.163,
+        0.96,
+        0.812
+      ],
+      "priority": "furniture",
+      "dimensions": {
+        "width": 1.0725,
+        "length": 0.58,
+        "height": 1.87
+      },
+      "agent_semantics": {
+        "semantic_class": "floor_furniture",
+        "layout_role": "floor_branch_anchor",
+        "pose_sensitive": true,
+        "expected_pose": "long_axis_left_right",
+        "wall_relation": {
+          "mode": "against",
+          "wall_id": "wall_east",
+          "confidence": 0.78
+        },
+        "pose_constraints": {
+          "expected_pose": "long_axis_left_right",
+          "long_axis_world": "y",
+          "wall_id": "wall_east",
+          "contact_face": "back",
+          "front_yaw_world": 180.0,
+          "visible_front_direction": "camera",
+          "confidence": 0.9,
+          "evidence": "wardrobe doors and handles face camera, with rear near the back wall",
+          "facing_target": "queen_bed",
+          "front_yaw_inference": "Back-to-wall storage front faces into the room for the selected wall (wall_east)."
+        },
+        "reference_evidence": "tall wood wardrobe stands in the back right area, left of the door",
+        "support_hint": "floor",
+        "functional_cluster_memberships": [
+          {
+            "cluster_id": "functional_same_wall_storage_door_cluster_00",
+            "type": "same_wall_storage_door_cluster",
+            "role": "wall_storage"
+          }
+        ],
+        "functional_cluster_roles": {
+          "functional_same_wall_storage_door_cluster_00": {
+            "type": "same_wall_storage_door_cluster",
+            "role": "wall_storage"
+          }
+        },
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "one tall cabinet body with flat doors and attached handles, no detached boards",
+          "failure_action": "regenerate",
+          "confidence": 0.97,
+          "evidence": "Wardrobe is a large rigid cabinet with doors and black pulls.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R07",
+        "bbox": [
+          0.801,
+          0.163,
+          0.96,
+          0.812
+        ],
+        "spatial_alias": "right_wall_wardrobe",
+        "visible_instance_description": "tall warm wood wardrobe with dark vertical pulls",
+        "confidence": 0.98,
+        "ambiguous_with": [],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R07 covers the tall cabinet on the right side of the room.",
+        "duplicate_key": "floor_furniture",
+        "duplicate_count": 3
+      },
+      "reference_depth": {
+        "frontness": 0.433785,
+        "backness": 0.566215,
+        "normalized_depth": 0.433785,
+        "raw_depth_value": 153.485596,
+        "confidence": 0.66,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1159,
+            177,
+            1391,
+            882
+          ],
+          "bbox_area_ratio": 0.104011,
+          "center_depth": 153.600281,
+          "median_depth": 160.205536,
+          "central_median_depth": 153.485596,
+          "p25_depth": 102.885666,
+          "p75_depth": 167.073761
+        }
+      }
+    },
+    {
+      "id": "left_dresser",
+      "category": "dresser",
+      "description": "low warm wood six-drawer dresser below the window on the left side",
+      "asset_prompt": "isolated warm walnut low dresser with six drawers, black horizontal handles, tapered legs, modern transitional style",
+      "image_bbox": [
+        0.0,
+        0.569,
+        0.204,
+        0.869
+      ],
+      "priority": "furniture",
+      "dimensions": {
+        "width": 1.45,
+        "length": 0.16,
+        "height": 0.82
+      },
+      "agent_semantics": {
+        "semantic_class": "floor_furniture",
+        "layout_role": "floor_branch_anchor",
+        "pose_sensitive": true,
+        "expected_pose": "long_axis_front_back",
+        "wall_relation": {
+          "mode": "against",
+          "wall_id": "wall_west",
+          "confidence": 0.76
+        },
+        "pose_constraints": {
+          "expected_pose": "long_axis_front_back",
+          "long_axis_world": "y",
+          "wall_id": "wall_west",
+          "contact_face": "back",
+          "front_yaw_world": 0.0,
+          "visible_front_direction": "right",
+          "confidence": 0.78,
+          "evidence": "dresser sits along the left wall under the window with drawers facing into the room",
+          "facing_target": "left_window"
+        },
+        "reference_evidence": "low wood dresser sits below the window on the left wall",
+        "support_hint": "floor",
+        "functional_cluster_memberships": [
+          {
+            "cluster_id": "functional_rug_underlay_cluster_02",
+            "type": "rug_underlay_cluster",
+            "role": "object_on_visual_underlay"
+          }
+        ],
+        "functional_cluster_roles": {
+          "functional_rug_underlay_cluster_02": {
+            "type": "rug_underlay_cluster",
+            "role": "object_on_visual_underlay"
+          }
+        },
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "one continuous dresser cabinet with drawers, handles, and legs attached",
+          "failure_action": "regenerate",
+          "confidence": 0.96,
+          "evidence": "Low dresser should be one cabinet body with repeated drawer fronts, handles, and legs.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R08",
+        "bbox": [
+          0.0,
+          0.569,
+          0.204,
+          0.869
+        ],
+        "spatial_alias": "left_wall_dresser",
+        "visible_instance_description": "low wood dresser below the window on the left",
+        "confidence": 0.94,
+        "ambiguous_with": [],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R08 encloses the left-side dresser beneath the window and plant.",
+        "duplicate_key": "floor_furniture",
+        "duplicate_count": 3
+      },
+      "reference_depth": {
+        "frontness": 0.64475,
+        "backness": 0.35525,
+        "normalized_depth": 0.64475,
+        "raw_depth_value": 203.653442,
+        "confidence": 0.66,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            0,
+            617,
+            296,
+            944
+          ],
+          "bbox_area_ratio": 0.061552,
+          "center_depth": 212.243393,
+          "median_depth": 224.380508,
+          "central_median_depth": 203.653442,
+          "p25_depth": 163.184692,
+          "p75_depth": 280.615784
+        }
+      }
+    },
+    {
+      "id": "area_rug",
+      "category": "area rug",
+      "description": "large beige patterned rectangular rug under and in front of the bed",
+      "asset_prompt": "isolated large rectangular beige woven area rug with subtle linear distressed pattern and bound edges",
+      "image_bbox": [
+        0.001,
+        0.764,
+        1.0,
+        0.979
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 3.3,
+        "length": 2.4749999999999996,
+        "height": 0.24750000000000003
+      },
+      "agent_semantics": {
+        "semantic_class": "floor_covering",
+        "layout_role": "floor_decor",
+        "pose_sensitive": true,
+        "expected_pose": "flat_on_support",
+        "wall_relation": {
+          "mode": "none",
+          "wall_id": "null",
+          "confidence": 0.0
+        },
+        "pose_constraints": {
+          "expected_pose": "flat_on_support",
+          "long_axis_world": "x",
+          "wall_id": "null",
+          "contact_face": "unknown",
+          "front_yaw_world": "null",
+          "visible_front_direction": "unknown",
+          "confidence": 0.95,
+          "evidence": "rectangular rug lies flat under and in front of the bed, wider left to right",
+          "facing_target": "queen_bed"
+        },
+        "reference_evidence": "beige patterned rug spans foreground and extends under bed",
+        "support_hint": "floor",
+        "functional_cluster_memberships": [
+          {
+            "cluster_id": "functional_rug_underlay_cluster_02",
+            "type": "rug_underlay_cluster",
+            "role": "visual_floor_underlay"
+          }
+        ],
+        "functional_cluster_roles": {
+          "functional_rug_underlay_cluster_02": {
+            "type": "rug_underlay_cluster",
+            "role": "visual_floor_underlay"
+          }
+        },
+        "asset_component_policy": {
+          "component_policy": "soft_or_irregular_integrated",
+          "allow_disconnected_detail": false,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "very_low",
+          "regeneration_hint": "one continuous thin rectangular rug surface with woven pattern, no loose strips",
+          "failure_action": "procedural_fallback",
+          "confidence": 0.96,
+          "evidence": "Rug is a single flat textile covering with integrated pattern.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R09",
+        "bbox": [
+          0.001,
+          0.764,
+          1.0,
+          0.979
+        ],
+        "spatial_alias": "front_floor_area_rug",
+        "visible_instance_description": "large beige patterned rug under and in front of the bed",
+        "confidence": 0.97,
+        "ambiguous_with": [],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R09 spans the large rectangular rug across the foreground floor.",
+        "duplicate_key": "floor_covering",
+        "duplicate_count": 1
+      },
+      "reference_depth": {
+        "frontness": 1.0,
+        "backness": 0.0,
+        "normalized_depth": 1.0,
+        "raw_depth_value": 320.884125,
+        "confidence": 0.74,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1,
+            829,
+            1448,
+            1064
+          ],
+          "bbox_area_ratio": 0.216241,
+          "center_depth": 319.206146,
+          "median_depth": 323.635864,
+          "central_median_depth": 320.884125,
+          "p25_depth": 292.593262,
+          "p75_depth": 405.450409
+        }
+      }
+    },
+    {
+      "id": "left_window",
+      "category": "window",
+      "description": "black-framed rectangular window on left wall",
+      "asset_prompt": "isolated tall rectangular black metal framed window with multiple panes and white trim",
+      "image_bbox": [
+        0.087,
+        0.184,
+        0.171,
+        0.569
+      ],
+      "priority": "furniture",
+      "dimensions": {
+        "width": 0.8,
+        "length": 0.08,
+        "height": 1.65
+      },
+      "agent_semantics": {
+        "semantic_class": "wall_attached",
+        "layout_role": "wall_branch",
+        "pose_sensitive": true,
+        "expected_pose": "wall_flush",
+        "wall_relation": {
+          "mode": "attached",
+          "wall_id": "wall_west",
+          "confidence": 0.91
+        },
+        "pose_constraints": {
+          "expected_pose": "wall_flush",
+          "long_axis_world": "none",
+          "wall_id": "wall_west",
+          "contact_face": "back",
+          "front_yaw_world": 0.0,
+          "visible_front_direction": "right",
+          "confidence": 0.91,
+          "evidence": "window is set flat into the left wall",
+          "facing_target": "left_dresser"
+        },
+        "reference_evidence": "black-framed window is mounted on the left wall",
+        "support_hint": "wall_west",
+        "functional_cluster_memberships": [
+          {
+            "cluster_id": "functional_window_curtain_cluster_01",
+            "type": "window_curtain_cluster",
+            "role": "window"
+          }
+        ],
+        "functional_cluster_roles": {
+          "functional_window_curtain_cluster_01": {
+            "type": "window_curtain_cluster",
+            "role": "window"
+          }
+        },
+        "asset_component_policy": {
+          "component_policy": "single_integrated_panel",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": true,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "one window frame assembly with panes held in a continuous outer frame",
+          "failure_action": "regenerate",
+          "confidence": 0.94,
+          "evidence": "Window is a framed wall panel with mullions and glass panes held by trim.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R10",
+        "bbox": [
+          0.087,
+          0.184,
+          0.171,
+          0.569
+        ],
+        "spatial_alias": "left_wall_window",
+        "visible_instance_description": "black-framed vertical window with curtains",
+        "confidence": 0.96,
+        "ambiguous_with": [],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R10 encloses the visible black-framed window on the left wall.",
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5
+      },
+      "reference_depth": {
+        "frontness": 0.068541,
+        "backness": 0.931459,
+        "normalized_depth": 0.068541,
+        "raw_depth_value": 66.630325,
+        "confidence": 0.5,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            125,
+            199,
+            248,
+            618
+          ],
+          "bbox_area_ratio": 0.032773,
+          "center_depth": 66.165634,
+          "median_depth": 69.849205,
+          "central_median_depth": 66.630325,
+          "p25_depth": 65.654312,
+          "p75_depth": 75.860603
+        }
+      }
+    },
+    {
+      "id": "curtain_rod",
+      "category": "curtain rod",
+      "description": "black curtain rod above the left window",
+      "asset_prompt": "isolated straight black metal curtain rod with round end finials",
+      "image_bbox": [
+        0.047,
+        0.11,
+        0.168,
+        0.143
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 1.25,
+        "length": 0.05,
+        "height": 0.7
+      },
+      "agent_semantics": {
+        "semantic_class": "wall_attached",
+        "layout_role": "wall_branch",
+        "pose_sensitive": true,
+        "expected_pose": "wall_flush",
+        "wall_relation": {
+          "mode": "attached",
+          "wall_id": "wall_west",
+          "confidence": 0.86
+        },
+        "pose_constraints": {
+          "expected_pose": "wall_flush",
+          "long_axis_world": "y",
+          "wall_id": "wall_west",
+          "contact_face": "back",
+          "front_yaw_world": 0.0,
+          "visible_front_direction": "right",
+          "confidence": 0.86,
+          "evidence": "rod is mounted horizontally along the left wall above the window",
+          "facing_target": "left_window"
+        },
+        "reference_evidence": "black curtain rod spans above the window and curtains",
+        "support_hint": "wall_west",
+        "functional_cluster_memberships": [
+          {
+            "cluster_id": "functional_window_curtain_cluster_01",
+            "type": "window_curtain_cluster",
+            "role": "curtain"
+          }
+        ],
+        "functional_cluster_roles": {
+          "functional_window_curtain_cluster_01": {
+            "type": "window_curtain_cluster",
+            "role": "curtain"
+          }
+        },
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "very_low",
+          "regeneration_hint": "one straight rod with attached end finials and brackets, no separate floating pieces",
+          "failure_action": "regenerate",
+          "confidence": 0.93,
+          "evidence": "Curtain rod is a simple continuous bar with finials, mounted as one object.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R11",
+        "bbox": [
+          0.047,
+          0.11,
+          0.168,
+          0.143
+        ],
+        "spatial_alias": "left_window_curtain_rod",
+        "visible_instance_description": "black curtain rod above the left window",
+        "confidence": 0.92,
+        "ambiguous_with": [],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R11 marks the horizontal rod above the curtains and window.",
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5
+      },
+      "reference_depth": {
+        "frontness": 0.242077,
+        "backness": 0.757923,
+        "normalized_depth": 0.242077,
+        "raw_depth_value": 107.897331,
+        "confidence": 0.27,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            68,
+            119,
+            244,
+            156
+          ],
+          "bbox_area_ratio": 0.004141,
+          "center_depth": 108.078308,
+          "median_depth": 107.956894,
+          "central_median_depth": 107.897331,
+          "p25_depth": 79.80191,
+          "p75_depth": 149.274521
+        }
+      }
+    },
+    {
+      "id": "left_wall_botanical_art",
+      "category": "framed wall art",
+      "description": "narrow framed botanical print partly visible on left wall",
+      "asset_prompt": "isolated vertical framed botanical leaf print with light background and thin natural wood frame",
+      "image_bbox": [
+        0.0,
+        0.251,
+        0.039,
+        0.43
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.45,
+        "length": 0.24750000000000003,
+        "height": 0.75
+      },
+      "agent_semantics": {
+        "semantic_class": "wall_attached",
+        "layout_role": "wall_branch",
+        "pose_sensitive": true,
+        "expected_pose": "wall_flush",
+        "wall_relation": {
+          "mode": "attached",
+          "wall_id": "wall_west",
+          "confidence": 0.82
+        },
+        "pose_constraints": {
+          "expected_pose": "wall_flush",
+          "long_axis_world": "none",
+          "wall_id": "wall_west",
+          "contact_face": "back",
+          "front_yaw_world": 0.0,
+          "visible_front_direction": "right",
+          "confidence": 0.82,
+          "evidence": "narrow botanical frame is flush on the left wall",
+          "facing_target": "left_dresser"
+        },
+        "reference_evidence": "narrow framed botanical print is partly visible at far left",
+        "support_hint": "wall_west",
+        "asset_component_policy": {
+          "component_policy": "single_integrated_panel",
+          "allow_disconnected_detail": false,
+          "requires_backing_body": true,
+          "max_fragment_tolerance": "very_low",
+          "regeneration_hint": "one continuous framed backing panel with botanical print, no separate leaves",
+          "failure_action": "procedural_fallback",
+          "confidence": 0.95,
+          "evidence": "Botanical wall art is a narrow flat framed print partly visible on the wall.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R12",
+        "bbox": [
+          0.0,
+          0.251,
+          0.039,
+          0.43
+        ],
+        "spatial_alias": "far_left_wall_botanical_art",
+        "visible_instance_description": "partially visible narrow framed botanical print on far left wall",
+        "confidence": 0.9,
+        "ambiguous_with": [
+          "landscape_wall_art"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R12 frames the cropped botanical artwork at the far left edge.",
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5
+      },
+      "reference_depth": {
+        "frontness": 0.581606,
+        "backness": 0.418394,
+        "normalized_depth": 0.581606,
+        "raw_depth_value": 188.637695,
+        "confidence": 0.35,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            0,
+            272,
+            57,
+            467
+          ],
+          "bbox_area_ratio": 0.007068,
+          "center_depth": 188.932419,
+          "median_depth": 188.516144,
+          "central_median_depth": 188.637695,
+          "p25_depth": 177.257111,
+          "p75_depth": 198.893326
+        }
+      }
+    },
+    {
+      "id": "left_dresser_plant",
+      "category": "potted plant",
+      "description": "leafy green plant in beige ceramic pot on left dresser",
+      "asset_prompt": "isolated leafy green houseplant in rounded beige ceramic pot",
+      "image_bbox": [
+        0.023,
+        0.463,
+        0.109,
+        0.611
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.42,
+        "length": 0.42,
+        "height": 0.55
+      },
+      "agent_semantics": {
+        "semantic_class": "plant",
+        "layout_role": "tabletop_child",
+        "pose_sensitive": true,
+        "expected_pose": "upright_on_support",
+        "wall_relation": {
+          "mode": "near",
+          "wall_id": "wall_west",
+          "confidence": 0.65
+        },
+        "pose_constraints": {
+          "expected_pose": "upright_on_support",
+          "long_axis_world": "none",
+          "wall_id": "wall_west",
+          "contact_face": "back",
+          "front_yaw_world": 0.0,
+          "visible_front_direction": "unknown",
+          "confidence": 0.9,
+          "evidence": "potted plant sits upright on the dresser top",
+          "facing_target": "left_dresser",
+          "contact_face_inference": "Side-wall storage defaults to back-to-wall; an oblique camera-visible cabinet front is not enough evidence for side-face wall contact.",
+          "front_yaw_inference": "Back-to-wall storage front faces into the room for the selected wall (wall_west)."
+        },
+        "reference_evidence": "leafy plant in beige pot sits on the left dresser",
+        "support_hint": "left_dresser",
+        "asset_component_policy": {
+          "component_policy": "many_details_on_base",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": true,
+          "max_fragment_tolerance": "medium",
+          "regeneration_hint": "leaf cluster attached to one visible ceramic pot, no loose floating leaves",
+          "failure_action": "regenerate",
+          "confidence": 0.93,
+          "evidence": "Plant may have many leaves, but they need to be anchored by a pot and stems.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R13",
+        "bbox": [
+          0.023,
+          0.463,
+          0.109,
+          0.611
+        ],
+        "spatial_alias": "left_dresser_plant",
+        "visible_instance_description": "leafy green plant in a beige pot on the left dresser",
+        "confidence": 0.95,
+        "ambiguous_with": [
+          "right_nightstand_plant"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R13 encloses the larger leafy plant placed on the left dresser.",
+        "duplicate_key": "plant",
+        "duplicate_count": 2
+      },
+      "reference_depth": {
+        "frontness": 0.639587,
+        "backness": 0.360413,
+        "normalized_depth": 0.639587,
+        "raw_depth_value": 202.425629,
+        "confidence": 0.54,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            33,
+            502,
+            158,
+            664
+          ],
+          "bbox_area_ratio": 0.012877,
+          "center_depth": 190.231812,
+          "median_depth": 204.558838,
+          "central_median_depth": 202.425629,
+          "p25_depth": 155.259003,
+          "p75_depth": 220.840485
+        }
+      }
+    },
+    {
+      "id": "window_books_stack",
+      "category": "book stack",
+      "description": "small stack of books on the left dresser by the window",
+      "asset_prompt": "isolated small neat stack of two hardcover books in neutral colors",
+      "image_bbox": [
+        0.111,
+        0.549,
+        0.154,
+        0.588
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.55,
+        "length": 0.16,
+        "height": 0.7
+      },
+      "agent_semantics": {
+        "semantic_class": "tabletop_flat",
+        "layout_role": "tabletop_child",
+        "pose_sensitive": true,
+        "expected_pose": "flat_on_support",
+        "wall_relation": {
+          "mode": "near",
+          "wall_id": "wall_west",
+          "confidence": 0.62
+        },
+        "pose_constraints": {
+          "expected_pose": "flat_on_support",
+          "long_axis_world": "x",
+          "wall_id": "wall_west",
+          "contact_face": "unknown",
+          "front_yaw_world": "null",
+          "visible_front_direction": "unknown",
+          "confidence": 0.83,
+          "evidence": "small book stack lies flat on the left dresser",
+          "facing_target": "left_dresser"
+        },
+        "reference_evidence": "small stack of books rests on dresser near the window",
+        "support_hint": "left_dresser",
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "compact aligned stack of books touching each other, no scattered separate books",
+          "failure_action": "regenerate",
+          "confidence": 0.88,
+          "evidence": "Small stack is multiple books but intended as one compact tabletop asset.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R14",
+        "bbox": [
+          0.111,
+          0.549,
+          0.154,
+          0.588
+        ],
+        "spatial_alias": "left_dresser_books_stack",
+        "visible_instance_description": "small stack of books near the window on the left dresser",
+        "confidence": 0.88,
+        "ambiguous_with": [
+          "right_books_stack"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R14 marks the flat book stack on the dresser top just below the window.",
+        "duplicate_key": "tabletop_flat",
+        "duplicate_count": 2
+      },
+      "reference_depth": {
+        "frontness": 0.453894,
+        "backness": 0.546106,
+        "normalized_depth": 0.453894,
+        "raw_depth_value": 158.267685,
+        "confidence": 0.35,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            160,
+            596,
+            223,
+            639
+          ],
+          "bbox_area_ratio": 0.001723,
+          "center_depth": 154.289261,
+          "median_depth": 156.329178,
+          "central_median_depth": 158.267685,
+          "p25_depth": 138.586868,
+          "p75_depth": 167.257004
+        }
+      }
+    },
+    {
+      "id": "alarm_clock",
+      "category": "alarm clock",
+      "description": "small round analog alarm clock on left nightstand",
+      "asset_prompt": "isolated small round vintage analog alarm clock with white face and light metal frame",
+      "image_bbox": [
+        0.309,
+        0.552,
+        0.342,
+        0.604
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.30250000000000005,
+        "length": 0.24750000000000003,
+        "height": 0.27
+      },
+      "agent_semantics": {
+        "semantic_class": "decor",
+        "layout_role": "tabletop_child",
+        "pose_sensitive": true,
+        "expected_pose": "upright_on_support",
+        "wall_relation": {
+          "mode": "near",
+          "wall_id": "wall_north",
+          "confidence": 0.7
+        },
+        "pose_constraints": {
+          "expected_pose": "upright_on_support",
+          "long_axis_world": "none",
+          "wall_id": "wall_north",
+          "contact_face": "unknown",
+          "front_yaw_world": 270.0,
+          "visible_front_direction": "camera",
+          "confidence": 0.86,
+          "evidence": "round clock stands upright on the nightstand with its face visible to camera",
+          "facing_target": "queen_bed"
+        },
+        "reference_evidence": "small analog alarm clock sits on the left nightstand",
+        "support_hint": "left_nightstand",
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "one compact clock body with face, bells, feet, and hands attached",
+          "failure_action": "regenerate",
+          "confidence": 0.92,
+          "evidence": "Clock is a small rigid object with a round body and minor attached parts.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R15",
+        "bbox": [
+          0.309,
+          0.552,
+          0.342,
+          0.604
+        ],
+        "spatial_alias": "left_nightstand_alarm_clock",
+        "visible_instance_description": "small round analog alarm clock on left nightstand",
+        "confidence": 0.93,
+        "ambiguous_with": [],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R15 encloses the small round clock beside the left lamp.",
+        "duplicate_key": "decor",
+        "duplicate_count": 1
+      },
+      "reference_depth": {
+        "frontness": 0.008844,
+        "backness": 0.991156,
+        "normalized_depth": 0.008844,
+        "raw_depth_value": 52.434456,
+        "confidence": 0.19,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            447,
+            599,
+            496,
+            656
+          ],
+          "bbox_area_ratio": 0.001776,
+          "center_depth": 50.74371,
+          "median_depth": 52.505527,
+          "central_median_depth": 52.434456,
+          "p25_depth": 35.316357,
+          "p75_depth": 64.533829
+        }
+      }
+    },
+    {
+      "id": "right_nightstand_plant",
+      "category": "potted plant",
+      "description": "small leafy plant in white pot on right nightstand",
+      "asset_prompt": "isolated small leafy green houseplant in a simple white ceramic pot",
+      "image_bbox": [
+        0.726,
+        0.54,
+        0.773,
+        0.599
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.30250000000000005,
+        "length": 0.24750000000000003,
+        "height": 0.27
+      },
+      "agent_semantics": {
+        "semantic_class": "plant",
+        "layout_role": "tabletop_child",
+        "pose_sensitive": true,
+        "expected_pose": "upright_on_support",
+        "wall_relation": {
+          "mode": "near",
+          "wall_id": "wall_north",
+          "confidence": 0.68
+        },
+        "pose_constraints": {
+          "expected_pose": "upright_on_support",
+          "long_axis_world": "none",
+          "wall_id": "wall_north",
+          "contact_face": "unknown",
+          "front_yaw_world": "null",
+          "visible_front_direction": "unknown",
+          "confidence": 0.88,
+          "evidence": "small potted plant sits upright on the right nightstand",
+          "facing_target": "right_nightstand"
+        },
+        "reference_evidence": "small leafy plant in white pot sits on right nightstand",
+        "support_hint": "right_nightstand",
+        "asset_component_policy": {
+          "component_policy": "many_details_on_base",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": true,
+          "max_fragment_tolerance": "medium",
+          "regeneration_hint": "small leaf cluster attached to one white pot, no loose floating leaves",
+          "failure_action": "regenerate",
+          "confidence": 0.92,
+          "evidence": "Small plant can contain many leaves but should be held by a visible pot.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R16",
+        "bbox": [
+          0.726,
+          0.54,
+          0.773,
+          0.599
+        ],
+        "spatial_alias": "right_nightstand_plant",
+        "visible_instance_description": "small leafy plant in a light pot on the right nightstand",
+        "confidence": 0.9,
+        "ambiguous_with": [
+          "left_dresser_plant"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R16 marks the small plant on the right nightstand near the wardrobe side.",
+        "duplicate_key": "plant",
+        "duplicate_count": 2
+      },
+      "reference_depth": {
+        "frontness": 0.042046,
+        "backness": 0.957954,
+        "normalized_depth": 0.042046,
+        "raw_depth_value": 60.329777,
+        "confidence": 0.31,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1051,
+            586,
+            1120,
+            651
+          ],
+          "bbox_area_ratio": 0.002852,
+          "center_depth": 60.095577,
+          "median_depth": 59.876263,
+          "central_median_depth": 60.329777,
+          "p25_depth": 35.475815,
+          "p75_depth": 70.93515
+        }
+      }
+    },
+    {
+      "id": "right_books_stack",
+      "category": "book stack",
+      "description": "small stack of books on right nightstand",
+      "asset_prompt": "isolated small stack of neutral hardcover books",
+      "image_bbox": [
+        0.704,
+        0.58,
+        0.751,
+        0.607
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.30250000000000005,
+        "length": 0.24750000000000003,
+        "height": 0.27
+      },
+      "agent_semantics": {
+        "semantic_class": "tabletop_flat",
+        "layout_role": "tabletop_child",
+        "pose_sensitive": true,
+        "expected_pose": "flat_on_support",
+        "wall_relation": {
+          "mode": "near",
+          "wall_id": "wall_north",
+          "confidence": 0.66
+        },
+        "pose_constraints": {
+          "expected_pose": "flat_on_support",
+          "long_axis_world": "x",
+          "wall_id": "wall_north",
+          "contact_face": "unknown",
+          "front_yaw_world": "null",
+          "visible_front_direction": "unknown",
+          "confidence": 0.82,
+          "evidence": "short stack of books lies flat on the right nightstand",
+          "facing_target": "right_nightstand"
+        },
+        "reference_evidence": "small stack of books lies on the right nightstand",
+        "support_hint": "right_nightstand",
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "compact stack of books in contact, no scattered separate books",
+          "failure_action": "regenerate",
+          "confidence": 0.88,
+          "evidence": "Books are a small tabletop stack, acceptable as one rigid grouped asset.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R17",
+        "bbox": [
+          0.704,
+          0.58,
+          0.751,
+          0.607
+        ],
+        "spatial_alias": "right_nightstand_books_stack",
+        "visible_instance_description": "small book stack on the right nightstand",
+        "confidence": 0.86,
+        "ambiguous_with": [
+          "window_books_stack"
+        ],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R17 encloses the flat stack on the right nightstand under the small plant area.",
+        "duplicate_key": "tabletop_flat",
+        "duplicate_count": 2
+      },
+      "reference_depth": {
+        "frontness": 0.095107,
+        "backness": 0.904893,
+        "normalized_depth": 0.095107,
+        "raw_depth_value": 72.947746,
+        "confidence": 0.47,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1019,
+            629,
+            1088,
+            660
+          ],
+          "bbox_area_ratio": 0.00136,
+          "center_depth": 73.032219,
+          "median_depth": 72.836288,
+          "central_median_depth": 72.947746,
+          "p25_depth": 72.130516,
+          "p75_depth": 73.118568
+        }
+      }
+    },
+    {
+      "id": "white_door",
+      "category": "interior door",
+      "description": "white paneled interior door with black lever at far right",
+      "asset_prompt": "isolated white paneled interior door with black lever handle and white trim",
+      "image_bbox": [
+        0.965,
+        0.192,
+        1.0,
+        0.841
+      ],
+      "priority": "furniture",
+      "dimensions": {
+        "width": 0.85,
+        "length": 0.08,
+        "height": 2.1
+      },
+      "agent_semantics": {
+        "semantic_class": "wall_attached",
+        "layout_role": "wall_branch",
+        "pose_sensitive": true,
+        "expected_pose": "wall_flush",
+        "wall_relation": {
+          "mode": "attached",
+          "wall_id": "wall_east",
+          "confidence": 0.78
+        },
+        "pose_constraints": {
+          "expected_pose": "wall_flush",
+          "long_axis_world": "y",
+          "wall_id": "wall_east",
+          "contact_face": "back",
+          "front_yaw_world": 180.0,
+          "visible_front_direction": "left",
+          "confidence": 0.78,
+          "evidence": "door is set flat into the right wall with panel face visible",
+          "facing_target": "tall_wardrobe"
+        },
+        "reference_evidence": "white paneled door with black handle is visible at far right",
+        "support_hint": "wall_east",
+        "functional_cluster_memberships": [
+          {
+            "cluster_id": "functional_same_wall_storage_door_cluster_00",
+            "type": "same_wall_storage_door_cluster",
+            "role": "door"
+          }
+        ],
+        "functional_cluster_roles": {
+          "functional_same_wall_storage_door_cluster_00": {
+            "type": "same_wall_storage_door_cluster",
+            "role": "door"
+          }
+        },
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "medium",
+          "regeneration_hint": "one continuous paneled door slab with trim and attached handle, no loose panels",
+          "failure_action": "procedural_fallback",
+          "confidence": 0.95,
+          "evidence": "Door is a flat wall-attached slab with raised panels and a handle. Door panels, frame, knobs and hinges may be separate mesh components when they form one wall-mounted door assembly.",
+          "fallback_used": false
+        }
+      },
+      "reference_instance": {
+        "reference_label": "R18",
+        "bbox": [
+          0.965,
+          0.192,
+          1.0,
+          0.841
+        ],
+        "spatial_alias": "far_right_wall_door",
+        "visible_instance_description": "partly visible white paneled interior door with black lever",
+        "confidence": 0.94,
+        "ambiguous_with": [],
+        "usable_for_spatial_order": true,
+        "ambiguity_overridden_for_spatial_order": false,
+        "evidence": "R18 follows the cropped white paneled door at the far right edge.",
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5
+      },
+      "reference_depth": {
+        "frontness": 0.598134,
+        "backness": 0.401866,
+        "normalized_depth": 0.598134,
+        "raw_depth_value": 192.567932,
+        "confidence": 0.5,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1397,
+            208,
+            1448,
+            914
+          ],
+          "bbox_area_ratio": 0.022897,
+          "center_depth": 190.982712,
+          "median_depth": 193.702011,
+          "central_median_depth": 192.567932,
+          "p25_depth": 184.930573,
+          "p75_depth": 203.126541
+        }
+      }
+    },
+    {
+      "id": "left_window_curtains",
+      "category": "curtain panels",
+      "description": "pair of warm beige linen curtain panels hanging on both sides of the left window",
+      "asset_prompt": "isolated connected pair of warm ivory beige linen curtain panels with vertical pleats and open center gap, no rod, no window, no room",
+      "image_bbox": [
+        0.035,
+        0.105,
+        0.19,
+        0.62
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 1.35,
+        "length": 0.06,
+        "height": 1.85
+      },
+      "agent_semantics": {
+        "semantic_class": "hanging",
+        "layout_role": "hanging",
+        "pose_sensitive": true,
+        "expected_pose": "wall_flush",
+        "wall_relation": {
+          "mode": "attached",
+          "wall_id": "wall_west",
+          "confidence": 0.9
+        },
+        "pose_constraints": {
+          "expected_pose": "wall_flush",
+          "long_axis_world": "y",
+          "wall_id": "wall_west",
+          "contact_face": "back",
+          "front_yaw_world": "0",
+          "visible_front_direction": "right",
+          "confidence": 0.86
+        },
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": true,
+          "requires_backing_body": false,
+          "max_fragment_tolerance": "medium",
+          "regeneration_hint": "one coherent pair of connected pleated curtain panels, no separate window or rod",
+          "failure_action": "keep_review",
+          "confidence": 0.78,
+          "evidence": "Curtain pair is one visual treatment around the left window; fabric header connects both panels.",
+          "fallback_used": false
+        },
+        "reference_evidence": "two beige curtain panels hang from the black rod on both sides of the left wall window"
+      }
+    },
+    {
+      "id": "ceiling_flush_light",
+      "category": "ceiling light",
+      "description": "round drum flush-mount ceiling light with cream shade",
+      "asset_prompt": "isolated round drum flush mount ceiling light with cream fabric shade, white diffuser underside, small dark center finial, no ceiling",
+      "image_bbox": [
+        0.455,
+        0.02,
+        0.62,
+        0.15
+      ],
+      "priority": "decor",
+      "dimensions": {
+        "width": 0.72,
+        "length": 0.72,
+        "height": 0.22
+      },
+      "agent_semantics": {
+        "semantic_class": "hanging",
+        "layout_role": "hanging",
+        "pose_sensitive": true,
+        "expected_pose": "none",
+        "wall_relation": {
+          "mode": "none",
+          "wall_id": "null",
+          "confidence": 0.0
+        },
+        "pose_constraints": {
+          "expected_pose": "none",
+          "long_axis_world": "none",
+          "wall_id": "null",
+          "contact_face": "unknown",
+          "front_yaw_world": "null",
+          "visible_front_direction": "down",
+          "confidence": 0.78
+        },
+        "asset_component_policy": {
+          "component_policy": "single_main_body_with_parts",
+          "allow_disconnected_detail": false,
+          "requires_backing_body": true,
+          "max_fragment_tolerance": "low",
+          "regeneration_hint": "one shallow round drum ceiling fixture with diffuser underside, no ceiling plane or room",
+          "failure_action": "regenerate",
+          "confidence": 0.86,
+          "evidence": "The visible ceiling lamp is a single rigid flush-mount fixture.",
+          "fallback_used": false
+        },
+        "reference_evidence": "round drum light fixture is mounted on the ceiling near the center of the room"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel_000",
+      "type": "against_wall",
+      "subject": "queen_bed",
+      "object": "wall_north",
+      "confidence": 0.86,
+      "evidence": "headboard is flush with the back wall"
+    },
+    {
+      "id": "rel_001",
+      "type": "left_of",
+      "subject": "left_nightstand",
+      "object": "queen_bed",
+      "confidence": 0.95,
+      "evidence": "left nightstand is immediately to the viewer-left of bed"
+    },
+    {
+      "id": "rel_002",
+      "type": "right_of",
+      "subject": "right_nightstand",
+      "object": "queen_bed",
+      "confidence": 0.95,
+      "evidence": "right nightstand is immediately to the viewer-right of bed"
+    },
+    {
+      "id": "rel_005",
+      "type": "attached_to",
+      "subject": "landscape_wall_art",
+      "object": "wall_north",
+      "confidence": 0.96,
+      "evidence": "framed landscape hangs on back wall above bed"
+    },
+    {
+      "id": "rel_006",
+      "type": "on",
+      "subject": "landscape_wall_art",
+      "object": "queen_bed",
+      "confidence": 0.94,
+      "evidence": "wall art is centered over headboard"
+    },
+    {
+      "id": "rel_008",
+      "type": "against_wall",
+      "subject": "left_dresser",
+      "object": "wall_west",
+      "confidence": 0.78,
+      "evidence": "dresser is positioned along left wall under window"
+    },
+    {
+      "id": "rel_009",
+      "type": "near",
+      "subject": "area_rug",
+      "object": "queen_bed",
+      "confidence": 0.9,
+      "evidence": "rug extends under and in front of bed visually",
+      "_floor_covering_visual_layer": true
+    },
+    {
+      "id": "rel_010",
+      "type": "attached_to",
+      "subject": "left_window",
+      "object": "wall_west",
+      "confidence": 0.9,
+      "evidence": "window is built into left wall"
+    },
+    {
+      "id": "rel_011",
+      "type": "attached_to",
+      "subject": "curtain_rod",
+      "object": "wall_west",
+      "confidence": 0.86,
+      "evidence": "rod is mounted above window on left wall"
+    },
+    {
+      "id": "rel_012",
+      "type": "attached_to",
+      "subject": "left_wall_botanical_art",
+      "object": "wall_west",
+      "confidence": 0.82,
+      "evidence": "botanical frame hangs on left wall"
+    },
+    {
+      "id": "rel_013",
+      "type": "on",
+      "subject": "left_dresser_plant",
+      "object": "left_dresser",
+      "confidence": 0.92,
+      "evidence": "plant pot rests on dresser top"
+    },
+    {
+      "id": "rel_014",
+      "type": "on",
+      "subject": "window_books_stack",
+      "object": "left_dresser",
+      "confidence": 0.88,
+      "evidence": "book stack lies on top of left dresser"
+    },
+    {
+      "id": "rel_018",
+      "type": "attached_to",
+      "subject": "white_door",
+      "object": "wall_east",
+      "confidence": 0.78,
+      "evidence": "door is set in the far right wall"
+    },
+    {
+      "id": "rel_019",
+      "type": "right_of",
+      "subject": "white_door",
+      "object": "tall_wardrobe",
+      "confidence": 0.86,
+      "evidence": "door appears to the right of wardrobe"
+    },
+    {
+      "id": "agent_wall_against_020",
+      "type": "against_wall",
+      "subject": "left_nightstand",
+      "object": "wall_north",
+      "confidence": 0.8,
+      "evidence": "wood nightstand sits immediately left of the bed against the back wall"
+    },
+    {
+      "id": "agent_wall_against_021",
+      "type": "against_wall",
+      "subject": "right_nightstand",
+      "object": "wall_north",
+      "confidence": 0.8,
+      "evidence": "wood nightstand sits immediately right of the bed against the back wall"
+    },
+    {
+      "id": "agent_wall_against_022",
+      "type": "against_wall",
+      "subject": "white_door",
+      "object": "wall_east",
+      "confidence": 0.78,
+      "evidence": "white paneled door with black handle is visible at far right"
+    },
+    {
+      "id": "agent_wall_against_022",
+      "type": "against_wall",
+      "subject": "tall_wardrobe",
+      "object": "wall_east",
+      "confidence": 0.78,
+      "evidence": "Oblique wall arbiter: reference bbox is on the right edge (cx=0.881, x2=0.960)."
+    },
+    {
+      "id": "agent_spatial_order_023",
+      "type": "left_of",
+      "subject": "left_dresser",
+      "object": "left_nightstand",
+      "confidence": 0.9,
+      "evidence": "R08 is far left, R02 left of R01, R03 right of R01, R07 and R18 are far right; R09 rug is foreground under/in front of bed."
+    },
+    {
+      "id": "agent_spatial_order_025",
+      "type": "left_of",
+      "subject": "queen_bed",
+      "object": "right_nightstand",
+      "confidence": 0.9,
+      "evidence": "R08 is far left, R02 left of R01, R03 right of R01, R07 and R18 are far right; R09 rug is foreground under/in front of bed."
+    },
+    {
+      "id": "agent_spatial_order_027",
+      "type": "left_of",
+      "subject": "right_nightstand",
+      "object": "tall_wardrobe",
+      "confidence": 0.9,
+      "evidence": "R08 is far left, R02 left of R01, R03 right of R01, R07 and R18 are far right; R09 rug is foreground under/in front of bed."
+    },
+    {
+      "id": "agent_spatial_order_029",
+      "type": "left_of",
+      "subject": "tall_wardrobe",
+      "object": "white_door",
+      "confidence": 0.9,
+      "evidence": "R08 is far left, R02 left of R01, R03 right of R01, R07 and R18 are far right; R09 rug is foreground under/in front of bed."
+    },
+    {
+      "id": "agent_spatial_order_031",
+      "type": "in_front_of",
+      "subject": "area_rug",
+      "object": "queen_bed",
+      "confidence": 0.9,
+      "evidence": "R08 is far left, R02 left of R01, R03 right of R01, R07 and R18 are far right; R09 rug is foreground under/in front of bed."
+    },
+    {
+      "id": "agent_spatial_order_033",
+      "type": "left_of",
+      "subject": "left_table_lamp",
+      "object": "alarm_clock",
+      "confidence": 0.88,
+      "evidence": "On R02, R04 lamp sits left/back and R15 alarm clock is to its right and lower/front."
+    },
+    {
+      "id": "agent_spatial_order_035",
+      "type": "in_front_of",
+      "subject": "alarm_clock",
+      "object": "left_table_lamp",
+      "confidence": 0.88,
+      "evidence": "On R02, R04 lamp sits left/back and R15 alarm clock is to its right and lower/front."
+    },
+    {
+      "id": "agent_spatial_order_037",
+      "type": "left_of",
+      "subject": "right_table_lamp",
+      "object": "right_books_stack",
+      "confidence": 0.82,
+      "evidence": "On R03, R05 lamp is left/back, R17 books are lower/front, and R16 plant is to the right of the books."
+    },
+    {
+      "id": "agent_spatial_order_039",
+      "type": "left_of",
+      "subject": "right_books_stack",
+      "object": "right_nightstand_plant",
+      "confidence": 0.82,
+      "evidence": "On R03, R05 lamp is left/back, R17 books are lower/front, and R16 plant is to the right of the books."
+    },
+    {
+      "id": "agent_spatial_order_041",
+      "type": "in_front_of",
+      "subject": "right_books_stack",
+      "object": "right_nightstand_plant",
+      "confidence": 0.82,
+      "evidence": "On R03, R05 lamp is left/back, R17 books are lower/front, and R16 plant is to the right of the books."
+    },
+    {
+      "id": "agent_spatial_order_043",
+      "type": "in_front_of",
+      "subject": "right_nightstand_plant",
+      "object": "right_table_lamp",
+      "confidence": 0.82,
+      "evidence": "On R03, R05 lamp is left/back, R17 books are lower/front, and R16 plant is to the right of the books."
+    },
+    {
+      "id": "agent_spatial_order_045",
+      "type": "left_of",
+      "subject": "left_dresser_plant",
+      "object": "window_books_stack",
+      "confidence": 0.86,
+      "evidence": "On R08 dresser, R13 plant is left of R14 book stack near the window."
+    },
+    {
+      "id": "agent_spatial_order_051",
+      "type": "right_of",
+      "subject": "tall_wardrobe",
+      "object": "right_nightstand",
+      "confidence": 0.94,
+      "evidence": "R07 wardrobe stands to the right of R03 right nightstand."
+    },
+    {
+      "id": "agent_spatial_order_053",
+      "type": "behind",
+      "subject": "landscape_wall_art",
+      "object": "queen_bed",
+      "confidence": 0.9,
+      "evidence": "R06 wall art is mounted on the back wall above and behind R01 bed."
+    },
+    {
+      "id": "agent_spatial_order_055",
+      "type": "in_front_of",
+      "subject": "right_books_stack",
+      "object": "right_table_lamp",
+      "confidence": 0.8,
+      "evidence": "R17 books are lower/front on R03 relative to R05 lamp."
+    },
+    {
+      "id": "reference_tabletop_support_037",
+      "type": "on",
+      "subject": "left_table_lamp",
+      "object": "left_nightstand",
+      "confidence": 0.96,
+      "evidence": "A gray ceramic lamp with a cream shade is visibly sitting on the left bedside table."
+    },
+    {
+      "id": "reference_tabletop_support_037",
+      "type": "on",
+      "subject": "alarm_clock",
+      "object": "left_nightstand",
+      "confidence": 0.93,
+      "evidence": "A small round analog alarm clock sits on the right side of the left nightstand beside the lamp."
+    },
+    {
+      "id": "reference_tabletop_support_037",
+      "type": "on",
+      "subject": "right_table_lamp",
+      "object": "right_nightstand",
+      "confidence": 0.96,
+      "evidence": "A matching gray ceramic lamp with a cream shade is visibly sitting on the right bedside table."
+    },
+    {
+      "id": "reference_tabletop_support_037",
+      "type": "on",
+      "subject": "right_books_stack",
+      "object": "right_nightstand",
+      "confidence": 0.86,
+      "evidence": "A short flat stack of books is visible on the right nightstand near the plant."
+    },
+    {
+      "id": "reference_tabletop_support_037",
+      "type": "on",
+      "subject": "right_nightstand_plant",
+      "object": "right_nightstand",
+      "confidence": 0.9,
+      "evidence": "A small leafy green plant in a light pot sits on the right nightstand near the books and lamp."
+    },
+    {
+      "type": "attached_to",
+      "subject": "left_window_curtains",
+      "object": "wall_west",
+      "confidence": 0.9,
+      "evidence": "curtain panels hang on the left wall around the window"
+    },
+    {
+      "type": "below",
+      "subject": "left_window_curtains",
+      "object": "curtain_rod",
+      "confidence": 0.88,
+      "evidence": "curtain fabric hangs below the black rod"
+    },
+    {
+      "type": "near",
+      "subject": "left_window_curtains",
+      "object": "left_window",
+      "confidence": 0.92,
+      "evidence": "curtains frame the left window"
+    },
+    {
+      "type": "above",
+      "subject": "ceiling_flush_light",
+      "object": "queen_bed",
+      "confidence": 0.74,
+      "evidence": "ceiling light is visible above the bed area in the reference view"
+    }
+  ],
+  "task": {
+    "description": "",
+    "source_objects": [],
+    "target_objects": []
+  },
+  "_rerun_sanitized_relations": {
+    "removed_count": 17,
+    "removed_ids": [
+      "agent_spatial_order_023",
+      "agent_spatial_order_025",
+      "agent_spatial_order_027",
+      "agent_spatial_order_029",
+      "agent_spatial_order_031",
+      "agent_spatial_order_033",
+      "agent_spatial_order_035",
+      "agent_spatial_order_037",
+      "agent_spatial_order_039",
+      "agent_spatial_order_041",
+      "agent_spatial_order_043",
+      "agent_spatial_order_045",
+      "agent_spatial_order_047",
+      "agent_spatial_order_049",
+      "agent_spatial_order_051",
+      "agent_spatial_order_053",
+      "reference_consistency_wall_038"
+    ]
+  },
+  "_invalid_integrated_wall_detail_scrub": {
+    "schema": "tree_sage_invalid_integrated_wall_detail_scrub_v1",
+    "enabled": true,
+    "stages": [
+      "pre_normalize_raw_scene_graph",
+      "post_normalize_scene_graph"
+    ],
+    "fixes": [],
+    "fix_count": 0,
+    "ok": true
+  },
+  "_soft_layout_detail_policy": {
+    "schema": "tree_sage_soft_layout_detail_policy_v1",
+    "enabled": true,
+    "stages": [
+      "pre_normalize_raw_scene_graph",
+      "post_normalize_scene_graph"
+    ],
+    "removed": [],
+    "removed_count": 0,
+    "updated_parent_ids": [],
+    "ok": true
+  },
+  "_integrated_window_sill_policy": {
+    "schema": "tree_sage_integrated_window_sill_policy_v1",
+    "enabled": true,
+    "stages": [
+      "pre_normalize_raw_scene_graph",
+      "post_normalize_scene_graph"
+    ],
+    "removed": [],
+    "redirected_relations": [],
+    "updated_window_ids": [],
+    "removed_count": 0,
+    "ok": true
+  },
+  "_room_size_grounding": {
+    "source": "raw_graph:room",
+    "before": {
+      "width": 5.2,
+      "length": 4.6,
+      "height": 2.8
+    },
+    "after": {
+      "width": 5.2,
+      "length": 4.6,
+      "height": 2.8
+    },
+    "fix_count": 0,
+    "warnings": []
+  },
+  "_room_axis_grounding": {
+    "mode": "auto",
+    "swapped": false,
+    "reason": "reference_image_aspect_matches_room_axis_order",
+    "before": {
+      "width": 5.2,
+      "length": 4.6,
+      "height": 2.8
+    },
+    "after": {
+      "width": 5.2,
+      "length": 4.6,
+      "height": 2.8
+    },
+    "axis_mapping": {
+      "image_horizontal": "world_x_width",
+      "image_vertical_depth": "world_y_length",
+      "world_x_width_source": "grounded_width",
+      "world_y_length_source": "grounded_length"
+    }
+  },
+  "_wall_material_plan": {
+    "enabled": true,
+    "source": "reference_image_bright_wall_color_heuristic",
+    "global_wall": {
+      "texture_type": "solid_color",
+      "base_color": [
+        0.8205,
+        0.7727,
+        0.7205
+      ],
+      "roughness": 0.78,
+      "alpha": 1.0
+    },
+    "floor": {
+      "texture_type": "sampled_image_texture",
+      "base_color": [
+        0.4392,
+        0.3451,
+        0.251
+      ],
+      "roughness": 0.82,
+      "alpha": 1.0,
+      "source": "reference_image_floor_color_heuristic",
+      "texture_image": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/floor_material_sampled_texture.png"
+    },
+    "warnings": []
+  },
+  "_reference_instance_map": {
+    "queen_bed": {
+      "reference_label": "R01",
+      "bbox": [
+        0.231,
+        0.46,
+        0.754,
+        0.857
+      ],
+      "spatial_alias": "center_bed",
+      "visible_instance_description": "large upholstered bed centered on back wall with beige headboard and white bedding",
+      "confidence": 0.98,
+      "ambiguous_with": [],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R01 tightly covers the central bed and headboard area beneath the landscape art.",
+      "duplicate_key": "floor_furniture",
+      "duplicate_count": 3
+    },
+    "left_nightstand": {
+      "reference_label": "R02",
+      "bbox": [
+        0.22,
+        0.59,
+        0.34,
+        0.743
+      ],
+      "spatial_alias": "left_bedside_nightstand",
+      "visible_instance_description": "wood two-drawer nightstand on the left side of the bed",
+      "confidence": 0.95,
+      "ambiguous_with": [
+        "right_nightstand"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R02 encloses the nightstand immediately left of the bed, below the left lamp.",
+      "duplicate_key": "table_anchor",
+      "duplicate_count": 2
+    },
+    "right_nightstand": {
+      "reference_label": "R03",
+      "bbox": [
+        0.664,
+        0.59,
+        0.787,
+        0.743
+      ],
+      "spatial_alias": "right_bedside_nightstand",
+      "visible_instance_description": "wood two-drawer nightstand on the right side of the bed",
+      "confidence": 0.95,
+      "ambiguous_with": [
+        "left_nightstand"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R03 encloses the matching nightstand immediately right of the bed, below the right lamp.",
+      "duplicate_key": "table_anchor",
+      "duplicate_count": 2
+    },
+    "left_table_lamp": {
+      "reference_label": "R04",
+      "bbox": [
+        0.253,
+        0.459,
+        0.337,
+        0.595
+      ],
+      "spatial_alias": "left_bedside_lamp",
+      "visible_instance_description": "gray ceramic lamp with cream shade on left nightstand",
+      "confidence": 0.96,
+      "ambiguous_with": [
+        "right_table_lamp"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R04 surrounds the lamp sitting on the left nightstand.",
+      "duplicate_key": "lighting",
+      "duplicate_count": 2
+    },
+    "right_table_lamp": {
+      "reference_label": "R05",
+      "bbox": [
+        0.684,
+        0.459,
+        0.755,
+        0.599
+      ],
+      "spatial_alias": "right_bedside_lamp",
+      "visible_instance_description": "gray ceramic lamp with cream shade on right nightstand",
+      "confidence": 0.96,
+      "ambiguous_with": [
+        "left_table_lamp"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R05 surrounds the lamp sitting on the right nightstand.",
+      "duplicate_key": "lighting",
+      "duplicate_count": 2
+    },
+    "landscape_wall_art": {
+      "reference_label": "R06",
+      "bbox": [
+        0.41,
+        0.26,
+        0.606,
+        0.428
+      ],
+      "spatial_alias": "center_back_wall_landscape_art",
+      "visible_instance_description": "large framed landscape print above the bed",
+      "confidence": 0.98,
+      "ambiguous_with": [
+        "left_wall_botanical_art"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R06 encloses the prominent framed landscape centered over the headboard.",
+      "duplicate_key": "wall_attached",
+      "duplicate_count": 5
+    },
+    "tall_wardrobe": {
+      "reference_label": "R07",
+      "bbox": [
+        0.801,
+        0.163,
+        0.96,
+        0.812
+      ],
+      "spatial_alias": "right_wall_wardrobe",
+      "visible_instance_description": "tall warm wood wardrobe with dark vertical pulls",
+      "confidence": 0.98,
+      "ambiguous_with": [],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R07 covers the tall cabinet on the right side of the room.",
+      "duplicate_key": "floor_furniture",
+      "duplicate_count": 3
+    },
+    "left_dresser": {
+      "reference_label": "R08",
+      "bbox": [
+        0.0,
+        0.569,
+        0.204,
+        0.869
+      ],
+      "spatial_alias": "left_wall_dresser",
+      "visible_instance_description": "low wood dresser below the window on the left",
+      "confidence": 0.94,
+      "ambiguous_with": [],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R08 encloses the left-side dresser beneath the window and plant.",
+      "duplicate_key": "floor_furniture",
+      "duplicate_count": 3
+    },
+    "area_rug": {
+      "reference_label": "R09",
+      "bbox": [
+        0.001,
+        0.764,
+        1.0,
+        0.979
+      ],
+      "spatial_alias": "front_floor_area_rug",
+      "visible_instance_description": "large beige patterned rug under and in front of the bed",
+      "confidence": 0.97,
+      "ambiguous_with": [],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R09 spans the large rectangular rug across the foreground floor.",
+      "duplicate_key": "floor_covering",
+      "duplicate_count": 1
+    },
+    "left_window": {
+      "reference_label": "R10",
+      "bbox": [
+        0.087,
+        0.184,
+        0.171,
+        0.569
+      ],
+      "spatial_alias": "left_wall_window",
+      "visible_instance_description": "black-framed vertical window with curtains",
+      "confidence": 0.96,
+      "ambiguous_with": [],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R10 encloses the visible black-framed window on the left wall.",
+      "duplicate_key": "wall_attached",
+      "duplicate_count": 5
+    },
+    "curtain_rod": {
+      "reference_label": "R11",
+      "bbox": [
+        0.047,
+        0.11,
+        0.168,
+        0.143
+      ],
+      "spatial_alias": "left_window_curtain_rod",
+      "visible_instance_description": "black curtain rod above the left window",
+      "confidence": 0.92,
+      "ambiguous_with": [],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R11 marks the horizontal rod above the curtains and window.",
+      "duplicate_key": "wall_attached",
+      "duplicate_count": 5
+    },
+    "left_wall_botanical_art": {
+      "reference_label": "R12",
+      "bbox": [
+        0.0,
+        0.251,
+        0.039,
+        0.43
+      ],
+      "spatial_alias": "far_left_wall_botanical_art",
+      "visible_instance_description": "partially visible narrow framed botanical print on far left wall",
+      "confidence": 0.9,
+      "ambiguous_with": [
+        "landscape_wall_art"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R12 frames the cropped botanical artwork at the far left edge.",
+      "duplicate_key": "wall_attached",
+      "duplicate_count": 5
+    },
+    "left_dresser_plant": {
+      "reference_label": "R13",
+      "bbox": [
+        0.023,
+        0.463,
+        0.109,
+        0.611
+      ],
+      "spatial_alias": "left_dresser_plant",
+      "visible_instance_description": "leafy green plant in a beige pot on the left dresser",
+      "confidence": 0.95,
+      "ambiguous_with": [
+        "right_nightstand_plant"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R13 encloses the larger leafy plant placed on the left dresser.",
+      "duplicate_key": "plant",
+      "duplicate_count": 2
+    },
+    "window_books_stack": {
+      "reference_label": "R14",
+      "bbox": [
+        0.111,
+        0.549,
+        0.154,
+        0.588
+      ],
+      "spatial_alias": "left_dresser_books_stack",
+      "visible_instance_description": "small stack of books near the window on the left dresser",
+      "confidence": 0.88,
+      "ambiguous_with": [
+        "right_books_stack"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R14 marks the flat book stack on the dresser top just below the window.",
+      "duplicate_key": "tabletop_flat",
+      "duplicate_count": 2
+    },
+    "alarm_clock": {
+      "reference_label": "R15",
+      "bbox": [
+        0.309,
+        0.552,
+        0.342,
+        0.604
+      ],
+      "spatial_alias": "left_nightstand_alarm_clock",
+      "visible_instance_description": "small round analog alarm clock on left nightstand",
+      "confidence": 0.93,
+      "ambiguous_with": [],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R15 encloses the small round clock beside the left lamp.",
+      "duplicate_key": "decor",
+      "duplicate_count": 1
+    },
+    "right_nightstand_plant": {
+      "reference_label": "R16",
+      "bbox": [
+        0.726,
+        0.54,
+        0.773,
+        0.599
+      ],
+      "spatial_alias": "right_nightstand_plant",
+      "visible_instance_description": "small leafy plant in a light pot on the right nightstand",
+      "confidence": 0.9,
+      "ambiguous_with": [
+        "left_dresser_plant"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R16 marks the small plant on the right nightstand near the wardrobe side.",
+      "duplicate_key": "plant",
+      "duplicate_count": 2
+    },
+    "right_books_stack": {
+      "reference_label": "R17",
+      "bbox": [
+        0.704,
+        0.58,
+        0.751,
+        0.607
+      ],
+      "spatial_alias": "right_nightstand_books_stack",
+      "visible_instance_description": "small book stack on the right nightstand",
+      "confidence": 0.86,
+      "ambiguous_with": [
+        "window_books_stack"
+      ],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R17 encloses the flat stack on the right nightstand under the small plant area.",
+      "duplicate_key": "tabletop_flat",
+      "duplicate_count": 2
+    },
+    "white_door": {
+      "reference_label": "R18",
+      "bbox": [
+        0.965,
+        0.192,
+        1.0,
+        0.841
+      ],
+      "spatial_alias": "far_right_wall_door",
+      "visible_instance_description": "partly visible white paneled interior door with black lever",
+      "confidence": 0.94,
+      "ambiguous_with": [],
+      "usable_for_spatial_order": true,
+      "ambiguity_overridden_for_spatial_order": false,
+      "evidence": "R18 follows the cropped white paneled door at the far right edge.",
+      "duplicate_key": "wall_attached",
+      "duplicate_count": 5
+    }
+  },
+  "_reference_instance_artifact_report": {
+    "schema": "tree_sage_reference_instance_artifacts_v1",
+    "enabled": true,
+    "ok": true,
+    "flux_image": "ChatGPT Image 2026年6月10日 11_36_57.png",
+    "overlay_image": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_overlay.png",
+    "crop_dir": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops",
+    "objects": [
+      {
+        "id": "queen_bed",
+        "reference_label": "R01",
+        "category": "bed",
+        "description": "upholstered queen bed with beige headboard, white bedding, green pillows and green bed throw integrated as bed details",
+        "image_bbox": [
+          0.231,
+          0.46,
+          0.754,
+          0.857
+        ],
+        "duplicate_key": "floor_furniture",
+        "duplicate_count": 3,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R01_queen_bed.png"
+      },
+      {
+        "id": "left_nightstand",
+        "reference_label": "R02",
+        "category": "nightstand",
+        "description": "small two-drawer wood nightstand to the left of the bed",
+        "image_bbox": [
+          0.22,
+          0.59,
+          0.34,
+          0.743
+        ],
+        "duplicate_key": "table_anchor",
+        "duplicate_count": 2,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R02_left_nightstand.png"
+      },
+      {
+        "id": "right_nightstand",
+        "reference_label": "R03",
+        "category": "nightstand",
+        "description": "small two-drawer wood nightstand to the right of the bed",
+        "image_bbox": [
+          0.664,
+          0.59,
+          0.787,
+          0.743
+        ],
+        "duplicate_key": "table_anchor",
+        "duplicate_count": 2,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R03_right_nightstand.png"
+      },
+      {
+        "id": "left_table_lamp",
+        "reference_label": "R04",
+        "category": "table lamp",
+        "description": "gray ceramic table lamp with cream fabric shade on left nightstand",
+        "image_bbox": [
+          0.253,
+          0.459,
+          0.337,
+          0.595
+        ],
+        "duplicate_key": "lighting",
+        "duplicate_count": 2,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R04_left_table_lamp.png"
+      },
+      {
+        "id": "right_table_lamp",
+        "reference_label": "R05",
+        "category": "table lamp",
+        "description": "gray ceramic table lamp with cream fabric shade on right nightstand",
+        "image_bbox": [
+          0.684,
+          0.459,
+          0.755,
+          0.599
+        ],
+        "duplicate_key": "lighting",
+        "duplicate_count": 2,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R05_right_table_lamp.png"
+      },
+      {
+        "id": "landscape_wall_art",
+        "reference_label": "R06",
+        "category": "framed wall art",
+        "description": "large framed landscape print mounted above the bed",
+        "image_bbox": [
+          0.41,
+          0.26,
+          0.606,
+          0.428
+        ],
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R06_landscape_wall_art.png"
+      },
+      {
+        "id": "tall_wardrobe",
+        "reference_label": "R07",
+        "category": "wardrobe",
+        "description": "tall warm wood wardrobe with two doors and black vertical pulls on right wall area",
+        "image_bbox": [
+          0.801,
+          0.163,
+          0.96,
+          0.812
+        ],
+        "duplicate_key": "floor_furniture",
+        "duplicate_count": 3,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R07_tall_wardrobe.png"
+      },
+      {
+        "id": "left_dresser",
+        "reference_label": "R08",
+        "category": "dresser",
+        "description": "low warm wood six-drawer dresser below the window on the left side",
+        "image_bbox": [
+          0.0,
+          0.569,
+          0.204,
+          0.869
+        ],
+        "duplicate_key": "floor_furniture",
+        "duplicate_count": 3,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R08_left_dresser.png"
+      },
+      {
+        "id": "area_rug",
+        "reference_label": "R09",
+        "category": "area rug",
+        "description": "large beige patterned rectangular rug under and in front of the bed",
+        "image_bbox": [
+          0.001,
+          0.764,
+          1.0,
+          0.979
+        ],
+        "duplicate_key": "floor_covering",
+        "duplicate_count": 1,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R09_area_rug.png"
+      },
+      {
+        "id": "left_window",
+        "reference_label": "R10",
+        "category": "window",
+        "description": "black-framed rectangular window on left wall",
+        "image_bbox": [
+          0.087,
+          0.184,
+          0.171,
+          0.569
+        ],
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R10_left_window.png"
+      },
+      {
+        "id": "curtain_rod",
+        "reference_label": "R11",
+        "category": "curtain rod",
+        "description": "black curtain rod above the left window",
+        "image_bbox": [
+          0.047,
+          0.11,
+          0.168,
+          0.143
+        ],
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R11_curtain_rod.png"
+      },
+      {
+        "id": "left_wall_botanical_art",
+        "reference_label": "R12",
+        "category": "framed wall art",
+        "description": "narrow framed botanical print partly visible on left wall",
+        "image_bbox": [
+          0.0,
+          0.251,
+          0.039,
+          0.43
+        ],
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R12_left_wall_botanical_art.png"
+      },
+      {
+        "id": "left_dresser_plant",
+        "reference_label": "R13",
+        "category": "potted plant",
+        "description": "leafy green plant in beige ceramic pot on left dresser",
+        "image_bbox": [
+          0.023,
+          0.463,
+          0.109,
+          0.611
+        ],
+        "duplicate_key": "plant",
+        "duplicate_count": 2,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R13_left_dresser_plant.png"
+      },
+      {
+        "id": "window_books_stack",
+        "reference_label": "R14",
+        "category": "book stack",
+        "description": "small stack of books on the left dresser by the window",
+        "image_bbox": [
+          0.111,
+          0.549,
+          0.154,
+          0.588
+        ],
+        "duplicate_key": "tabletop_flat",
+        "duplicate_count": 2,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R14_window_books_stack.png"
+      },
+      {
+        "id": "alarm_clock",
+        "reference_label": "R15",
+        "category": "alarm clock",
+        "description": "small round analog alarm clock on left nightstand",
+        "image_bbox": [
+          0.309,
+          0.552,
+          0.342,
+          0.604
+        ],
+        "duplicate_key": "decor",
+        "duplicate_count": 1,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R15_alarm_clock.png"
+      },
+      {
+        "id": "right_nightstand_plant",
+        "reference_label": "R16",
+        "category": "potted plant",
+        "description": "small leafy plant in white pot on right nightstand",
+        "image_bbox": [
+          0.726,
+          0.54,
+          0.773,
+          0.599
+        ],
+        "duplicate_key": "plant",
+        "duplicate_count": 2,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R16_right_nightstand_plant.png"
+      },
+      {
+        "id": "right_books_stack",
+        "reference_label": "R17",
+        "category": "book stack",
+        "description": "small stack of books on right nightstand",
+        "image_bbox": [
+          0.704,
+          0.58,
+          0.751,
+          0.607
+        ],
+        "duplicate_key": "tabletop_flat",
+        "duplicate_count": 2,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R17_right_books_stack.png"
+      },
+      {
+        "id": "white_door",
+        "reference_label": "R18",
+        "category": "interior door",
+        "description": "white paneled interior door with black lever at far right",
+        "image_bbox": [
+          0.965,
+          0.192,
+          1.0,
+          0.841
+        ],
+        "duplicate_key": "wall_attached",
+        "duplicate_count": 5,
+        "crop_path": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_instance_crops/R18_white_door.png"
+      }
+    ],
+    "warnings": []
+  },
+  "_reference_spatial_order_groups": [
+    {
+      "group_id": "major_floor_anchors",
+      "scope": "global_anchor",
+      "anchor_id": null,
+      "objects": [
+        "area_rug",
+        "left_dresser",
+        "left_nightstand",
+        "queen_bed",
+        "right_nightstand",
+        "tall_wardrobe",
+        "white_door"
+      ],
+      "left_to_right": [
+        "left_dresser",
+        "left_nightstand",
+        "queen_bed",
+        "right_nightstand",
+        "tall_wardrobe",
+        "white_door"
+      ],
+      "front_to_back": [],
+      "confidence": 0.9,
+      "evidence": "R08 is far left, R02 left of R01, R03 right of R01, R07 and R18 are far right; R09 rug is foreground under/in front of bed. Global depth order disabled by view-conditioned branch mode."
+    },
+    {
+      "group_id": "left_nightstand_top",
+      "scope": "tabletop",
+      "anchor_id": "left_nightstand",
+      "objects": [
+        "alarm_clock",
+        "left_table_lamp"
+      ],
+      "left_to_right": [
+        "left_table_lamp",
+        "alarm_clock"
+      ],
+      "front_to_back": [],
+      "confidence": 0.88,
+      "evidence": "On R02, R04 lamp sits left/back and R15 alarm clock is to its right and lower/front. Tabletop depth order is handled by support packing and collision checks in this oblique view.",
+      "view_condition_soft_tabletop_depth_order": true
+    },
+    {
+      "group_id": "right_nightstand_top",
+      "scope": "tabletop",
+      "anchor_id": "right_nightstand",
+      "objects": [
+        "right_books_stack",
+        "right_nightstand_plant",
+        "right_table_lamp"
+      ],
+      "left_to_right": [
+        "right_table_lamp",
+        "right_books_stack",
+        "right_nightstand_plant"
+      ],
+      "front_to_back": [],
+      "confidence": 0.82,
+      "evidence": "On R03, R05 lamp is left/back, R17 books are lower/front, and R16 plant is to the right of the books. Tabletop depth order is handled by support packing and collision checks in this oblique view.",
+      "view_condition_soft_tabletop_depth_order": true
+    },
+    {
+      "group_id": "left_dresser_top",
+      "scope": "tabletop",
+      "anchor_id": "left_dresser",
+      "objects": [
+        "left_dresser_plant",
+        "window_books_stack"
+      ],
+      "left_to_right": [
+        "left_dresser_plant",
+        "window_books_stack"
+      ],
+      "front_to_back": [],
+      "confidence": 0.86,
+      "evidence": "On R08 dresser, R13 plant is left of R14 book stack near the window."
+    },
+    {
+      "group_id": "left_wall_plane",
+      "scope": "wall",
+      "anchor_id": "wall_west",
+      "objects": [
+        "curtain_rod",
+        "left_wall_botanical_art",
+        "left_window"
+      ],
+      "left_to_right": [
+        "left_wall_botanical_art",
+        "curtain_rod",
+        "left_window"
+      ],
+      "front_to_back": [],
+      "confidence": 0.76,
+      "evidence": "R12 botanical art is at the far left edge; R11 rod spans above and left of R10 window on the same visible left wall area."
+    },
+    {
+      "group_id": "back_wall_bed_branch",
+      "scope": "local_branch",
+      "anchor_id": "queen_bed",
+      "objects": [
+        "landscape_wall_art"
+      ],
+      "left_to_right": [
+        "landscape_wall_art"
+      ],
+      "front_to_back": [],
+      "confidence": 0.92,
+      "evidence": "R06 landscape art is centered over R01 bed, between R04 left lamp and R05 right lamp. Floor decor near a side-wall window is kept as a separate floor branch; image left/right against wall panels is not a hard wall-tangent placement cue."
+    }
+  ],
+  "_view_condition_report": {
+    "schema": "tree_sage_reference_view_condition_v1",
+    "enabled": true,
+    "mode": "view_conditioned_branch_relations",
+    "camera_view_type": "oblique",
+    "global_order_reliable": false,
+    "depth_readability_score": 0.52,
+    "left_right_readability_score": 0.82,
+    "floor_anchor_count": 5,
+    "floor_anchor_ids": [
+      "left_nightstand",
+      "right_nightstand",
+      "tall_wardrobe",
+      "left_dresser",
+      "area_rug"
+    ],
+    "reference_grounding_usable_coverage": 1.0,
+    "back_wall_anchor_density": 0.6,
+    "repeated_anchor_density": 0.8,
+    "bbox_center_x_span": 0.7785,
+    "bbox_center_y_span": 0.384,
+    "global_axis_pair_hard_enabled": false,
+    "branch_relation_mode_enabled": true,
+    "failure_reasons": [
+      "many_floor_anchors_near_back_wall",
+      "many_similar_or_repeated_anchor_instances"
+    ]
+  },
+  "_reference_depth_by_object": {
+    "queen_bed": {
+      "frontness": 0.975695,
+      "backness": 0.024305,
+      "normalized_depth": 0.975695,
+      "raw_depth_value": 282.352356,
+      "confidence": 0.66,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          334,
+          499,
+          1092,
+          931
+        ],
+        "bbox_area_ratio": 0.208235,
+        "center_depth": 282.346771,
+        "median_depth": 261.050781,
+        "central_median_depth": 282.352356,
+        "p25_depth": 70.81739,
+        "p75_depth": 314.27356
+      },
+      "slice_depths": [
+        {
+          "index": 0,
+          "role": "rear_or_top",
+          "bbox": [
+            0.231,
+            0.46,
+            0.754,
+            0.5394
+          ],
+          "raw_depth_value": 55.617523,
+          "stats": {
+            "bbox_pixels": [
+              334,
+              499,
+              1092,
+              586
+            ],
+            "bbox_area_ratio": 0.041936,
+            "center_depth": 55.100117,
+            "median_depth": 47.015388,
+            "central_median_depth": 55.617523,
+            "p25_depth": 42.392872,
+            "p75_depth": 61.688599
+          },
+          "normalized_depth": 0.02223,
+          "frontness": 0.02223,
+          "backness": 0.97777
+        },
+        {
+          "index": 1,
+          "role": "middle",
+          "bbox": [
+            0.231,
+            0.5394,
+            0.754,
+            0.6188
+          ],
+          "raw_depth_value": 99.548035,
+          "stats": {
+            "bbox_pixels": [
+              334,
+              585,
+              1092,
+              673
+            ],
+            "bbox_area_ratio": 0.042418,
+            "center_depth": 102.957855,
+            "median_depth": 81.687958,
+            "central_median_depth": 99.548035,
+            "p25_depth": 59.461342,
+            "p75_depth": 103.006508
+          },
+          "normalized_depth": 0.206966,
+          "frontness": 0.206966,
+          "backness": 0.793034
+        },
+        {
+          "index": 2,
+          "role": "middle",
+          "bbox": [
+            0.231,
+            0.6188,
+            0.754,
+            0.6982
+          ],
+          "raw_depth_value": 283.083313,
+          "stats": {
+            "bbox_pixels": [
+              334,
+              672,
+              1092,
+              759
+            ],
+            "bbox_area_ratio": 0.041936,
+            "center_depth": 282.346771,
+            "median_depth": 271.955566,
+            "central_median_depth": 283.083313,
+            "p25_depth": 203.016907,
+            "p75_depth": 299.457611
+          },
+          "normalized_depth": 0.978769,
+          "frontness": 0.978769,
+          "backness": 0.021231
+        },
+        {
+          "index": 3,
+          "role": "middle",
+          "bbox": [
+            0.231,
+            0.6982,
+            0.754,
+            0.7776
+          ],
+          "raw_depth_value": 317.936493,
+          "stats": {
+            "bbox_pixels": [
+              334,
+              758,
+              1092,
+              845
+            ],
+            "bbox_area_ratio": 0.041936,
+            "center_depth": 318.188995,
+            "median_depth": 316.760742,
+            "central_median_depth": 317.936493,
+            "p25_depth": 314.208405,
+            "p75_depth": 318.461914
+          },
+          "normalized_depth": 1.0,
+          "frontness": 1.0,
+          "backness": 0.0
+        },
+        {
+          "index": 4,
+          "role": "front_or_bottom",
+          "bbox": [
+            0.231,
+            0.7776,
+            0.754,
+            0.857
+          ],
+          "raw_depth_value": 315.495972,
+          "stats": {
+            "bbox_pixels": [
+              334,
+              844,
+              1092,
+              931
+            ],
+            "bbox_area_ratio": 0.041936,
+            "center_depth": 316.010132,
+            "median_depth": 314.299377,
+            "central_median_depth": 315.495972,
+            "p25_depth": 289.442352,
+            "p75_depth": 316.018311
+          },
+          "normalized_depth": 1.0,
+          "frontness": 1.0,
+          "backness": 0.0
+        }
+      ]
+    },
+    "left_nightstand": {
+      "frontness": 0.605287,
+      "backness": 0.394713,
+      "normalized_depth": 0.605287,
+      "raw_depth_value": 194.269089,
+      "confidence": 0.54,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          318,
+          640,
+          493,
+          807
+        ],
+        "bbox_area_ratio": 0.018585,
+        "center_depth": 266.544067,
+        "median_depth": 77.565895,
+        "central_median_depth": 194.269089,
+        "p25_depth": 74.148987,
+        "p75_depth": 301.857666
+      }
+    },
+    "right_nightstand": {
+      "frontness": 0.09466,
+      "backness": 0.90534,
+      "normalized_depth": 0.09466,
+      "raw_depth_value": 72.841423,
+      "confidence": 0.54,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          961,
+          640,
+          1140,
+          807
+        ],
+        "bbox_area_ratio": 0.01901,
+        "center_depth": 73.005432,
+        "median_depth": 72.935234,
+        "central_median_depth": 72.841423,
+        "p25_depth": 72.266472,
+        "p75_depth": 275.001312
+      }
+    },
+    "left_table_lamp": {
+      "frontness": 0.009073,
+      "backness": 0.990927,
+      "normalized_depth": 0.009073,
+      "raw_depth_value": 52.48893,
+      "confidence": 0.46,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          366,
+          498,
+          488,
+          647
+        ],
+        "bbox_area_ratio": 0.01156,
+        "center_depth": 44.605335,
+        "median_depth": 52.250732,
+        "central_median_depth": 52.48893,
+        "p25_depth": 33.778111,
+        "p75_depth": 61.368114
+      }
+    },
+    "right_table_lamp": {
+      "frontness": 0.021705,
+      "backness": 0.978295,
+      "normalized_depth": 0.021705,
+      "raw_depth_value": 55.492699,
+      "confidence": 0.31,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          990,
+          498,
+          1094,
+          651
+        ],
+        "bbox_area_ratio": 0.010119,
+        "center_depth": 58.28553,
+        "median_depth": 58.168671,
+        "central_median_depth": 55.492699,
+        "p25_depth": 34.589516,
+        "p75_depth": 61.339951
+      }
+    },
+    "landscape_wall_art": {
+      "frontness": 0.0,
+      "backness": 1.0,
+      "normalized_depth": 0.0,
+      "raw_depth_value": 38.413048,
+      "confidence": 0.5,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          593,
+          282,
+          878,
+          465
+        ],
+        "bbox_area_ratio": 0.033166,
+        "center_depth": 38.451317,
+        "median_depth": 38.343735,
+        "central_median_depth": 38.413048,
+        "p25_depth": 37.90218,
+        "p75_depth": 38.737518
+      }
+    },
+    "tall_wardrobe": {
+      "frontness": 0.433785,
+      "backness": 0.566215,
+      "normalized_depth": 0.433785,
+      "raw_depth_value": 153.485596,
+      "confidence": 0.66,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          1159,
+          177,
+          1391,
+          882
+        ],
+        "bbox_area_ratio": 0.104011,
+        "center_depth": 153.600281,
+        "median_depth": 160.205536,
+        "central_median_depth": 153.485596,
+        "p25_depth": 102.885666,
+        "p75_depth": 167.073761
+      }
+    },
+    "left_dresser": {
+      "frontness": 0.64475,
+      "backness": 0.35525,
+      "normalized_depth": 0.64475,
+      "raw_depth_value": 203.653442,
+      "confidence": 0.66,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          0,
+          617,
+          296,
+          944
+        ],
+        "bbox_area_ratio": 0.061552,
+        "center_depth": 212.243393,
+        "median_depth": 224.380508,
+        "central_median_depth": 203.653442,
+        "p25_depth": 163.184692,
+        "p75_depth": 280.615784
+      }
+    },
+    "area_rug": {
+      "frontness": 1.0,
+      "backness": 0.0,
+      "normalized_depth": 1.0,
+      "raw_depth_value": 320.884125,
+      "confidence": 0.74,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          1,
+          829,
+          1448,
+          1064
+        ],
+        "bbox_area_ratio": 0.216241,
+        "center_depth": 319.206146,
+        "median_depth": 323.635864,
+        "central_median_depth": 320.884125,
+        "p25_depth": 292.593262,
+        "p75_depth": 405.450409
+      }
+    },
+    "left_window": {
+      "frontness": 0.068541,
+      "backness": 0.931459,
+      "normalized_depth": 0.068541,
+      "raw_depth_value": 66.630325,
+      "confidence": 0.5,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          125,
+          199,
+          248,
+          618
+        ],
+        "bbox_area_ratio": 0.032773,
+        "center_depth": 66.165634,
+        "median_depth": 69.849205,
+        "central_median_depth": 66.630325,
+        "p25_depth": 65.654312,
+        "p75_depth": 75.860603
+      }
+    },
+    "curtain_rod": {
+      "frontness": 0.242077,
+      "backness": 0.757923,
+      "normalized_depth": 0.242077,
+      "raw_depth_value": 107.897331,
+      "confidence": 0.27,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          68,
+          119,
+          244,
+          156
+        ],
+        "bbox_area_ratio": 0.004141,
+        "center_depth": 108.078308,
+        "median_depth": 107.956894,
+        "central_median_depth": 107.897331,
+        "p25_depth": 79.80191,
+        "p75_depth": 149.274521
+      }
+    },
+    "left_wall_botanical_art": {
+      "frontness": 0.581606,
+      "backness": 0.418394,
+      "normalized_depth": 0.581606,
+      "raw_depth_value": 188.637695,
+      "confidence": 0.35,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          0,
+          272,
+          57,
+          467
+        ],
+        "bbox_area_ratio": 0.007068,
+        "center_depth": 188.932419,
+        "median_depth": 188.516144,
+        "central_median_depth": 188.637695,
+        "p25_depth": 177.257111,
+        "p75_depth": 198.893326
+      }
+    },
+    "left_dresser_plant": {
+      "frontness": 0.639587,
+      "backness": 0.360413,
+      "normalized_depth": 0.639587,
+      "raw_depth_value": 202.425629,
+      "confidence": 0.54,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          33,
+          502,
+          158,
+          664
+        ],
+        "bbox_area_ratio": 0.012877,
+        "center_depth": 190.231812,
+        "median_depth": 204.558838,
+        "central_median_depth": 202.425629,
+        "p25_depth": 155.259003,
+        "p75_depth": 220.840485
+      }
+    },
+    "window_books_stack": {
+      "frontness": 0.453894,
+      "backness": 0.546106,
+      "normalized_depth": 0.453894,
+      "raw_depth_value": 158.267685,
+      "confidence": 0.35,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          160,
+          596,
+          223,
+          639
+        ],
+        "bbox_area_ratio": 0.001723,
+        "center_depth": 154.289261,
+        "median_depth": 156.329178,
+        "central_median_depth": 158.267685,
+        "p25_depth": 138.586868,
+        "p75_depth": 167.257004
+      }
+    },
+    "alarm_clock": {
+      "frontness": 0.008844,
+      "backness": 0.991156,
+      "normalized_depth": 0.008844,
+      "raw_depth_value": 52.434456,
+      "confidence": 0.19,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          447,
+          599,
+          496,
+          656
+        ],
+        "bbox_area_ratio": 0.001776,
+        "center_depth": 50.74371,
+        "median_depth": 52.505527,
+        "central_median_depth": 52.434456,
+        "p25_depth": 35.316357,
+        "p75_depth": 64.533829
+      }
+    },
+    "right_nightstand_plant": {
+      "frontness": 0.042046,
+      "backness": 0.957954,
+      "normalized_depth": 0.042046,
+      "raw_depth_value": 60.329777,
+      "confidence": 0.31,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          1051,
+          586,
+          1120,
+          651
+        ],
+        "bbox_area_ratio": 0.002852,
+        "center_depth": 60.095577,
+        "median_depth": 59.876263,
+        "central_median_depth": 60.329777,
+        "p25_depth": 35.475815,
+        "p75_depth": 70.93515
+      }
+    },
+    "right_books_stack": {
+      "frontness": 0.095107,
+      "backness": 0.904893,
+      "normalized_depth": 0.095107,
+      "raw_depth_value": 72.947746,
+      "confidence": 0.47,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          1019,
+          629,
+          1088,
+          660
+        ],
+        "bbox_area_ratio": 0.00136,
+        "center_depth": 73.032219,
+        "median_depth": 72.836288,
+        "central_median_depth": 72.947746,
+        "p25_depth": 72.130516,
+        "p75_depth": 73.118568
+      }
+    },
+    "white_door": {
+      "frontness": 0.598134,
+      "backness": 0.401866,
+      "normalized_depth": 0.598134,
+      "raw_depth_value": 192.567932,
+      "confidence": 0.5,
+      "depth_value_convention": "inverse_relative",
+      "stats": {
+        "bbox_pixels": [
+          1397,
+          208,
+          1448,
+          914
+        ],
+        "bbox_area_ratio": 0.022897,
+        "center_depth": 190.982712,
+        "median_depth": 193.702011,
+        "central_median_depth": 192.567932,
+        "p25_depth": 184.930573,
+        "p75_depth": 203.126541
+      }
+    }
+  },
+  "_reference_depth_report": {
+    "schema": "tree_sage_reference_depth_report_v1",
+    "enabled": true,
+    "ok": true,
+    "objects": {
+      "queen_bed": {
+        "frontness": 0.975695,
+        "backness": 0.024305,
+        "normalized_depth": 0.975695,
+        "raw_depth_value": 282.352356,
+        "confidence": 0.66,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            334,
+            499,
+            1092,
+            931
+          ],
+          "bbox_area_ratio": 0.208235,
+          "center_depth": 282.346771,
+          "median_depth": 261.050781,
+          "central_median_depth": 282.352356,
+          "p25_depth": 70.81739,
+          "p75_depth": 314.27356
+        },
+        "slice_depths": [
+          {
+            "index": 0,
+            "role": "rear_or_top",
+            "bbox": [
+              0.231,
+              0.46,
+              0.754,
+              0.5394
+            ],
+            "raw_depth_value": 55.617523,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                499,
+                1092,
+                586
+              ],
+              "bbox_area_ratio": 0.041936,
+              "center_depth": 55.100117,
+              "median_depth": 47.015388,
+              "central_median_depth": 55.617523,
+              "p25_depth": 42.392872,
+              "p75_depth": 61.688599
+            },
+            "normalized_depth": 0.02223,
+            "frontness": 0.02223,
+            "backness": 0.97777
+          },
+          {
+            "index": 1,
+            "role": "middle",
+            "bbox": [
+              0.231,
+              0.5394,
+              0.754,
+              0.6188
+            ],
+            "raw_depth_value": 99.548035,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                585,
+                1092,
+                673
+              ],
+              "bbox_area_ratio": 0.042418,
+              "center_depth": 102.957855,
+              "median_depth": 81.687958,
+              "central_median_depth": 99.548035,
+              "p25_depth": 59.461342,
+              "p75_depth": 103.006508
+            },
+            "normalized_depth": 0.206966,
+            "frontness": 0.206966,
+            "backness": 0.793034
+          },
+          {
+            "index": 2,
+            "role": "middle",
+            "bbox": [
+              0.231,
+              0.6188,
+              0.754,
+              0.6982
+            ],
+            "raw_depth_value": 283.083313,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                672,
+                1092,
+                759
+              ],
+              "bbox_area_ratio": 0.041936,
+              "center_depth": 282.346771,
+              "median_depth": 271.955566,
+              "central_median_depth": 283.083313,
+              "p25_depth": 203.016907,
+              "p75_depth": 299.457611
+            },
+            "normalized_depth": 0.978769,
+            "frontness": 0.978769,
+            "backness": 0.021231
+          },
+          {
+            "index": 3,
+            "role": "middle",
+            "bbox": [
+              0.231,
+              0.6982,
+              0.754,
+              0.7776
+            ],
+            "raw_depth_value": 317.936493,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                758,
+                1092,
+                845
+              ],
+              "bbox_area_ratio": 0.041936,
+              "center_depth": 318.188995,
+              "median_depth": 316.760742,
+              "central_median_depth": 317.936493,
+              "p25_depth": 314.208405,
+              "p75_depth": 318.461914
+            },
+            "normalized_depth": 1.0,
+            "frontness": 1.0,
+            "backness": 0.0
+          },
+          {
+            "index": 4,
+            "role": "front_or_bottom",
+            "bbox": [
+              0.231,
+              0.7776,
+              0.754,
+              0.857
+            ],
+            "raw_depth_value": 315.495972,
+            "stats": {
+              "bbox_pixels": [
+                334,
+                844,
+                1092,
+                931
+              ],
+              "bbox_area_ratio": 0.041936,
+              "center_depth": 316.010132,
+              "median_depth": 314.299377,
+              "central_median_depth": 315.495972,
+              "p25_depth": 289.442352,
+              "p75_depth": 316.018311
+            },
+            "normalized_depth": 1.0,
+            "frontness": 1.0,
+            "backness": 0.0
+          }
+        ],
+        "bbox": [
+          0.231,
+          0.46,
+          0.754,
+          0.857
+        ]
+      },
+      "left_nightstand": {
+        "frontness": 0.605287,
+        "backness": 0.394713,
+        "normalized_depth": 0.605287,
+        "raw_depth_value": 194.269089,
+        "confidence": 0.54,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            318,
+            640,
+            493,
+            807
+          ],
+          "bbox_area_ratio": 0.018585,
+          "center_depth": 266.544067,
+          "median_depth": 77.565895,
+          "central_median_depth": 194.269089,
+          "p25_depth": 74.148987,
+          "p75_depth": 301.857666
+        },
+        "bbox": [
+          0.22,
+          0.59,
+          0.34,
+          0.743
+        ]
+      },
+      "right_nightstand": {
+        "frontness": 0.09466,
+        "backness": 0.90534,
+        "normalized_depth": 0.09466,
+        "raw_depth_value": 72.841423,
+        "confidence": 0.54,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            961,
+            640,
+            1140,
+            807
+          ],
+          "bbox_area_ratio": 0.01901,
+          "center_depth": 73.005432,
+          "median_depth": 72.935234,
+          "central_median_depth": 72.841423,
+          "p25_depth": 72.266472,
+          "p75_depth": 275.001312
+        },
+        "bbox": [
+          0.664,
+          0.59,
+          0.787,
+          0.743
+        ]
+      },
+      "left_table_lamp": {
+        "frontness": 0.009073,
+        "backness": 0.990927,
+        "normalized_depth": 0.009073,
+        "raw_depth_value": 52.48893,
+        "confidence": 0.46,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            366,
+            498,
+            488,
+            647
+          ],
+          "bbox_area_ratio": 0.01156,
+          "center_depth": 44.605335,
+          "median_depth": 52.250732,
+          "central_median_depth": 52.48893,
+          "p25_depth": 33.778111,
+          "p75_depth": 61.368114
+        },
+        "bbox": [
+          0.253,
+          0.459,
+          0.337,
+          0.595
+        ]
+      },
+      "right_table_lamp": {
+        "frontness": 0.021705,
+        "backness": 0.978295,
+        "normalized_depth": 0.021705,
+        "raw_depth_value": 55.492699,
+        "confidence": 0.31,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            990,
+            498,
+            1094,
+            651
+          ],
+          "bbox_area_ratio": 0.010119,
+          "center_depth": 58.28553,
+          "median_depth": 58.168671,
+          "central_median_depth": 55.492699,
+          "p25_depth": 34.589516,
+          "p75_depth": 61.339951
+        },
+        "bbox": [
+          0.684,
+          0.459,
+          0.755,
+          0.599
+        ]
+      },
+      "landscape_wall_art": {
+        "frontness": 0.0,
+        "backness": 1.0,
+        "normalized_depth": 0.0,
+        "raw_depth_value": 38.413048,
+        "confidence": 0.5,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            593,
+            282,
+            878,
+            465
+          ],
+          "bbox_area_ratio": 0.033166,
+          "center_depth": 38.451317,
+          "median_depth": 38.343735,
+          "central_median_depth": 38.413048,
+          "p25_depth": 37.90218,
+          "p75_depth": 38.737518
+        },
+        "bbox": [
+          0.41,
+          0.26,
+          0.606,
+          0.428
+        ]
+      },
+      "tall_wardrobe": {
+        "frontness": 0.433785,
+        "backness": 0.566215,
+        "normalized_depth": 0.433785,
+        "raw_depth_value": 153.485596,
+        "confidence": 0.66,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1159,
+            177,
+            1391,
+            882
+          ],
+          "bbox_area_ratio": 0.104011,
+          "center_depth": 153.600281,
+          "median_depth": 160.205536,
+          "central_median_depth": 153.485596,
+          "p25_depth": 102.885666,
+          "p75_depth": 167.073761
+        },
+        "bbox": [
+          0.801,
+          0.163,
+          0.96,
+          0.812
+        ]
+      },
+      "left_dresser": {
+        "frontness": 0.64475,
+        "backness": 0.35525,
+        "normalized_depth": 0.64475,
+        "raw_depth_value": 203.653442,
+        "confidence": 0.66,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            0,
+            617,
+            296,
+            944
+          ],
+          "bbox_area_ratio": 0.061552,
+          "center_depth": 212.243393,
+          "median_depth": 224.380508,
+          "central_median_depth": 203.653442,
+          "p25_depth": 163.184692,
+          "p75_depth": 280.615784
+        },
+        "bbox": [
+          0.0,
+          0.569,
+          0.204,
+          0.869
+        ]
+      },
+      "area_rug": {
+        "frontness": 1.0,
+        "backness": 0.0,
+        "normalized_depth": 1.0,
+        "raw_depth_value": 320.884125,
+        "confidence": 0.74,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1,
+            829,
+            1448,
+            1064
+          ],
+          "bbox_area_ratio": 0.216241,
+          "center_depth": 319.206146,
+          "median_depth": 323.635864,
+          "central_median_depth": 320.884125,
+          "p25_depth": 292.593262,
+          "p75_depth": 405.450409
+        },
+        "bbox": [
+          0.001,
+          0.764,
+          1.0,
+          0.979
+        ]
+      },
+      "left_window": {
+        "frontness": 0.068541,
+        "backness": 0.931459,
+        "normalized_depth": 0.068541,
+        "raw_depth_value": 66.630325,
+        "confidence": 0.5,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            125,
+            199,
+            248,
+            618
+          ],
+          "bbox_area_ratio": 0.032773,
+          "center_depth": 66.165634,
+          "median_depth": 69.849205,
+          "central_median_depth": 66.630325,
+          "p25_depth": 65.654312,
+          "p75_depth": 75.860603
+        },
+        "bbox": [
+          0.087,
+          0.184,
+          0.171,
+          0.569
+        ]
+      },
+      "curtain_rod": {
+        "frontness": 0.242077,
+        "backness": 0.757923,
+        "normalized_depth": 0.242077,
+        "raw_depth_value": 107.897331,
+        "confidence": 0.27,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            68,
+            119,
+            244,
+            156
+          ],
+          "bbox_area_ratio": 0.004141,
+          "center_depth": 108.078308,
+          "median_depth": 107.956894,
+          "central_median_depth": 107.897331,
+          "p25_depth": 79.80191,
+          "p75_depth": 149.274521
+        },
+        "bbox": [
+          0.047,
+          0.11,
+          0.168,
+          0.143
+        ]
+      },
+      "left_wall_botanical_art": {
+        "frontness": 0.581606,
+        "backness": 0.418394,
+        "normalized_depth": 0.581606,
+        "raw_depth_value": 188.637695,
+        "confidence": 0.35,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            0,
+            272,
+            57,
+            467
+          ],
+          "bbox_area_ratio": 0.007068,
+          "center_depth": 188.932419,
+          "median_depth": 188.516144,
+          "central_median_depth": 188.637695,
+          "p25_depth": 177.257111,
+          "p75_depth": 198.893326
+        },
+        "bbox": [
+          0.0,
+          0.251,
+          0.039,
+          0.43
+        ]
+      },
+      "left_dresser_plant": {
+        "frontness": 0.639587,
+        "backness": 0.360413,
+        "normalized_depth": 0.639587,
+        "raw_depth_value": 202.425629,
+        "confidence": 0.54,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            33,
+            502,
+            158,
+            664
+          ],
+          "bbox_area_ratio": 0.012877,
+          "center_depth": 190.231812,
+          "median_depth": 204.558838,
+          "central_median_depth": 202.425629,
+          "p25_depth": 155.259003,
+          "p75_depth": 220.840485
+        },
+        "bbox": [
+          0.023,
+          0.463,
+          0.109,
+          0.611
+        ]
+      },
+      "window_books_stack": {
+        "frontness": 0.453894,
+        "backness": 0.546106,
+        "normalized_depth": 0.453894,
+        "raw_depth_value": 158.267685,
+        "confidence": 0.35,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            160,
+            596,
+            223,
+            639
+          ],
+          "bbox_area_ratio": 0.001723,
+          "center_depth": 154.289261,
+          "median_depth": 156.329178,
+          "central_median_depth": 158.267685,
+          "p25_depth": 138.586868,
+          "p75_depth": 167.257004
+        },
+        "bbox": [
+          0.111,
+          0.549,
+          0.154,
+          0.588
+        ]
+      },
+      "alarm_clock": {
+        "frontness": 0.008844,
+        "backness": 0.991156,
+        "normalized_depth": 0.008844,
+        "raw_depth_value": 52.434456,
+        "confidence": 0.19,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            447,
+            599,
+            496,
+            656
+          ],
+          "bbox_area_ratio": 0.001776,
+          "center_depth": 50.74371,
+          "median_depth": 52.505527,
+          "central_median_depth": 52.434456,
+          "p25_depth": 35.316357,
+          "p75_depth": 64.533829
+        },
+        "bbox": [
+          0.309,
+          0.552,
+          0.342,
+          0.604
+        ]
+      },
+      "right_nightstand_plant": {
+        "frontness": 0.042046,
+        "backness": 0.957954,
+        "normalized_depth": 0.042046,
+        "raw_depth_value": 60.329777,
+        "confidence": 0.31,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1051,
+            586,
+            1120,
+            651
+          ],
+          "bbox_area_ratio": 0.002852,
+          "center_depth": 60.095577,
+          "median_depth": 59.876263,
+          "central_median_depth": 60.329777,
+          "p25_depth": 35.475815,
+          "p75_depth": 70.93515
+        },
+        "bbox": [
+          0.726,
+          0.54,
+          0.773,
+          0.599
+        ]
+      },
+      "right_books_stack": {
+        "frontness": 0.095107,
+        "backness": 0.904893,
+        "normalized_depth": 0.095107,
+        "raw_depth_value": 72.947746,
+        "confidence": 0.47,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1019,
+            629,
+            1088,
+            660
+          ],
+          "bbox_area_ratio": 0.00136,
+          "center_depth": 73.032219,
+          "median_depth": 72.836288,
+          "central_median_depth": 72.947746,
+          "p25_depth": 72.130516,
+          "p75_depth": 73.118568
+        },
+        "bbox": [
+          0.704,
+          0.58,
+          0.751,
+          0.607
+        ]
+      },
+      "white_door": {
+        "frontness": 0.598134,
+        "backness": 0.401866,
+        "normalized_depth": 0.598134,
+        "raw_depth_value": 192.567932,
+        "confidence": 0.5,
+        "depth_value_convention": "inverse_relative",
+        "stats": {
+          "bbox_pixels": [
+            1397,
+            208,
+            1448,
+            914
+          ],
+          "bbox_area_ratio": 0.022897,
+          "center_depth": 190.982712,
+          "median_depth": 193.702011,
+          "central_median_depth": 192.567932,
+          "p25_depth": 184.930573,
+          "p75_depth": 203.126541
+        },
+        "bbox": [
+          0.965,
+          0.192,
+          1.0,
+          0.841
+        ]
+      }
+    },
+    "sampled_count": 18,
+    "usable_count": 10,
+    "generation_returncode": 0,
+    "depth_map": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_depth/depth_map.npy",
+    "depth_map_png": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_depth/depth_map.png",
+    "depth_value_convention": "inverse_relative",
+    "model_report": {
+      "requested_model": "/data/xy/pat3d_stage1_data/models/depth__large_relative",
+      "resolved_model": "/data/xy/pat3d_stage1_data/models/depth__large_relative",
+      "depth_estimation_type": "relative",
+      "depth_value_convention": "inverse_relative",
+      "max_depth": 1.0,
+      "schema": "tree_sage_reference_depth_model_report_v1",
+      "image": "ChatGPT Image 2026年6月10日 11_36_57.png",
+      "image_size": [
+        1448,
+        1086
+      ],
+      "depth_map_npy": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_depth/depth_map.npy",
+      "depth_map_png": "/home/xy/SAGE/tmp/image2_replacement_20260624/flow2_img0610_113657_image2_assets_full/reference_depth/depth_map.png",
+      "raw_stats": {
+        "min": 26.878347,
+        "max": 519.806885,
+        "median": 158.814194
+      }
+    },
+    "raw_stats": {
+      "min": 26.878347,
+      "max": 519.806885,
+      "median": 158.814194
+    }
+  },
+  "_reference_consistency_refiner": {
+    "schema": "tree_sage_reference_consistency_refiner_v1",
+    "enabled": true,
+    "ok": true,
+    "fixes": [],
+    "fix_count": 0,
+    "side_wall_branches": [],
+    "warnings": []
+  },
+  "_task_relation_overrides": [],
+  "_task_relation_override_skipped": "static_scene_prompt",
+  "_closet_door_panel_assembly_merge": {
+    "schema": "tree_sage_closet_door_panel_assembly_merge_v1",
+    "enabled": true,
+    "merged": [],
+    "skipped": [],
+    "removed_ids": [],
+    "merge_count": 0,
+    "ok": true,
+    "reason": "fewer_than_two_closet_door_panel_candidates"
+  },
+  "_wall_local_layout_plan": {
+    "schema": "tree_sage_wall_local_layout_plan_v1",
+    "enabled": true,
+    "walls": {
+      "wall_east": {
+        "wall_id": "wall_east",
+        "tangent_axis": "y",
+        "members": [
+          {
+            "id": "tall_wardrobe",
+            "role": "wall_storage",
+            "wall_id": "wall_east",
+            "bbox": [
+              0.801,
+              0.163,
+              0.96,
+              0.812
+            ],
+            "bbox_center": [
+              0.8805,
+              0.4875
+            ],
+            "reference_frontness": 0.433785,
+            "reference_depth_confidence": 0.66
+          },
+          {
+            "id": "white_door",
+            "role": "room_door",
+            "wall_id": "wall_east",
+            "bbox": [
+              0.965,
+              0.192,
+              1.0,
+              0.841
+            ],
+            "bbox_center": [
+              0.9825,
+              0.5165
+            ],
+            "reference_frontness": 0.598134,
+            "reference_depth_confidence": 0.5
+          }
+        ],
+        "tangent_order": [
+          "white_door",
+          "tall_wardrobe"
+        ],
+        "order_source": "reference_depth_frontness_front_to_back"
+      },
+      "wall_north": {
+        "wall_id": "wall_north",
+        "tangent_axis": "x",
+        "members": [
+          {
+            "id": "landscape_wall_art",
+            "role": "wall_attached",
+            "wall_id": "wall_north",
+            "bbox": [
+              0.41,
+              0.26,
+              0.606,
+              0.428
+            ],
+            "bbox_center": [
+              0.508,
+              0.344
+            ],
+            "reference_frontness": 0.0,
+            "reference_depth_confidence": 0.5
+          },
+          {
+            "id": "alarm_clock",
+            "role": "wall_attached",
+            "wall_id": "wall_north",
+            "bbox": [
+              0.309,
+              0.552,
+              0.342,
+              0.604
+            ],
+            "bbox_center": [
+              0.3255,
+              0.578
+            ],
+            "reference_frontness": null,
+            "reference_depth_confidence": null
+          }
+        ],
+        "tangent_order": [
+          "alarm_clock",
+          "landscape_wall_art"
+        ],
+        "order_source": "reference_bbox_x_left_to_right"
+      },
+      "wall_west": {
+        "wall_id": "wall_west",
+        "tangent_axis": "y",
+        "members": [
+          {
+            "id": "left_dresser",
+            "role": "wall_storage",
+            "wall_id": "wall_west",
+            "bbox": [
+              0.0,
+              0.569,
+              0.204,
+              0.869
+            ],
+            "bbox_center": [
+              0.102,
+              0.719
+            ],
+            "reference_frontness": 0.64475,
+            "reference_depth_confidence": 0.66
+          },
+          {
+            "id": "left_window",
+            "role": "window",
+            "wall_id": "wall_west",
+            "bbox": [
+              0.087,
+              0.184,
+              0.171,
+              0.569
+            ],
+            "bbox_center": [
+              0.129,
+              0.3765
+            ],
+            "reference_frontness": 0.068541,
+            "reference_depth_confidence": 0.5
+          },
+          {
+            "id": "curtain_rod",
+            "role": "curtain_rod",
+            "wall_id": "wall_west",
+            "bbox": [
+              0.047,
+              0.11,
+              0.168,
+              0.143
+            ],
+            "bbox_center": [
+              0.1075,
+              0.1265
+            ],
+            "reference_frontness": null,
+            "reference_depth_confidence": null
+          },
+          {
+            "id": "left_wall_botanical_art",
+            "role": "wall_attached",
+            "wall_id": "wall_west",
+            "bbox": [
+              0.0,
+              0.251,
+              0.039,
+              0.43
+            ],
+            "bbox_center": [
+              0.0195,
+              0.3405
+            ],
+            "reference_frontness": 0.581606,
+            "reference_depth_confidence": 0.35
+          },
+          {
+            "id": "window_books_stack",
+            "role": "wall_attached",
+            "wall_id": "wall_west",
+            "bbox": [
+              0.111,
+              0.549,
+              0.154,
+              0.588
+            ],
+            "bbox_center": [
+              0.1325,
+              0.5685
+            ],
+            "reference_frontness": 0.453894,
+            "reference_depth_confidence": 0.35
+          }
+        ],
+        "tangent_order": [
+          "left_dresser",
+          "left_wall_botanical_art",
+          "window_books_stack",
+          "left_window"
+        ],
+        "order_source": "reference_depth_frontness_front_to_back"
+      }
+    },
+    "pair_orders": [
+      {
+        "wall_id": "wall_east",
+        "axis": "y",
+        "front_id": "white_door",
+        "back_id": "tall_wardrobe",
+        "expected_low_tangent_id": "white_door",
+        "expected_high_tangent_id": "tall_wardrobe",
+        "source": "reference_depth_frontness",
+        "confidence": 0.614349,
+        "evidence": "For side-wall objects, higher reference frontness means closer to the viewer and lower room-y tangent placement.",
+        "frontness_gap": 0.164349
+      },
+      {
+        "wall_id": "wall_west",
+        "axis": "y",
+        "front_id": "left_dresser",
+        "back_id": "left_wall_botanical_art",
+        "expected_low_tangent_id": "left_dresser",
+        "expected_high_tangent_id": "left_wall_botanical_art",
+        "source": "reference_depth_frontness",
+        "confidence": 0.513144,
+        "evidence": "For side-wall objects, higher reference frontness means closer to the viewer and lower room-y tangent placement.",
+        "frontness_gap": 0.063144
+      },
+      {
+        "wall_id": "wall_west",
+        "axis": "y",
+        "front_id": "left_dresser",
+        "back_id": "window_books_stack",
+        "expected_low_tangent_id": "left_dresser",
+        "expected_high_tangent_id": "window_books_stack",
+        "source": "reference_depth_frontness",
+        "confidence": 0.640856,
+        "evidence": "For side-wall objects, higher reference frontness means closer to the viewer and lower room-y tangent placement.",
+        "frontness_gap": 0.190856
+      },
+      {
+        "wall_id": "wall_west",
+        "axis": "y",
+        "front_id": "left_dresser",
+        "back_id": "left_window",
+        "expected_low_tangent_id": "left_dresser",
+        "expected_high_tangent_id": "left_window",
+        "source": "reference_depth_frontness",
+        "confidence": 0.95,
+        "evidence": "For side-wall objects, higher reference frontness means closer to the viewer and lower room-y tangent placement.",
+        "frontness_gap": 0.576209
+      },
+      {
+        "wall_id": "wall_west",
+        "axis": "y",
+        "front_id": "left_wall_botanical_art",
+        "back_id": "window_books_stack",
+        "expected_low_tangent_id": "left_wall_botanical_art",
+        "expected_high_tangent_id": "window_books_stack",
+        "source": "reference_depth_frontness",
+        "confidence": 0.577712,
+        "evidence": "For side-wall objects, higher reference frontness means closer to the viewer and lower room-y tangent placement.",
+        "frontness_gap": 0.127712
+      },
+      {
+        "wall_id": "wall_west",
+        "axis": "y",
+        "front_id": "left_wall_botanical_art",
+        "back_id": "left_window",
+        "expected_low_tangent_id": "left_wall_botanical_art",
+        "expected_high_tangent_id": "left_window",
+        "source": "reference_depth_frontness",
+        "confidence": 0.95,
+        "evidence": "For side-wall objects, higher reference frontness means closer to the viewer and lower room-y tangent placement.",
+        "frontness_gap": 0.513065
+      },
+      {
+        "wall_id": "wall_west",
+        "axis": "y",
+        "front_id": "window_books_stack",
+        "back_id": "left_window",
+        "expected_low_tangent_id": "window_books_stack",
+        "expected_high_tangent_id": "left_window",
+        "source": "reference_depth_frontness",
+        "confidence": 0.835353,
+        "evidence": "For side-wall objects, higher reference frontness means closer to the viewer and lower room-y tangent placement.",
+        "frontness_gap": 0.385353
+      },
+      {
+        "wall_id": "wall_west",
+        "axis": "y",
+        "front_id": "left_wall_botanical_art",
+        "back_id": "curtain_rod",
+        "expected_low_tangent_id": "left_wall_botanical_art",
+        "expected_high_tangent_id": "curtain_rod",
+        "source": "side_wall_image_edge_order",
+        "confidence": 0.6584,
+        "evidence": "For side-wall wall-mounted/window/curtain objects, the image edge side disambiguates along-wall front/back when depth samples are missing or too sparse: west wall uses smaller image-x as the front/outside low tangent; east wall uses larger image-x as the front/outside low tangent.",
+        "image_x_gap": 0.088
+      }
+    ],
+    "corner_affinities": [
+      {
+        "id": "tall_wardrobe",
+        "wall_id": "wall_east",
+        "corner_id": "northeast",
+        "tangent_end": "high",
+        "source": "reference_bbox_top_edge_and_depth",
+        "confidence": 0.778175,
+        "evidence": "Tall side-wall storage reaches high in the reference crop and has rear/deeper depth evidence, so it should occupy the rear side-wall corner."
+      }
+    ],
+    "warnings": [],
+    "ok": true,
+    "pair_order_count": 8,
+    "corner_affinity_count": 1
+  },
+  "_bedside_tabletop_reference": {
+    "schema": "tree_sage_bedside_tabletop_reference_merge_v1",
+    "enabled": true,
+    "fixes": [
+      {
+        "type": "bedside_tabletop_support",
+        "id": "left_table_lamp",
+        "support_id": "left_nightstand",
+        "action": "keep",
+        "relation": {
+          "id": "reference_tabletop_support_037",
+          "type": "on",
+          "subject": "left_table_lamp",
+          "object": "left_nightstand",
+          "confidence": 0.96,
+          "evidence": "A gray ceramic lamp with a cream shade is visibly sitting on the left bedside table."
+        },
+        "confidence": 0.96
+      },
+      {
+        "type": "bedside_tabletop_support",
+        "id": "alarm_clock",
+        "support_id": "left_nightstand",
+        "action": "keep",
+        "relation": {
+          "id": "reference_tabletop_support_037",
+          "type": "on",
+          "subject": "alarm_clock",
+          "object": "left_nightstand",
+          "confidence": 0.93,
+          "evidence": "A small round analog alarm clock sits on the right side of the left nightstand beside the lamp."
+        },
+        "confidence": 0.93
+      },
+      {
+        "type": "bedside_tabletop_support",
+        "id": "right_table_lamp",
+        "support_id": "right_nightstand",
+        "action": "keep",
+        "relation": {
+          "id": "reference_tabletop_support_037",
+          "type": "on",
+          "subject": "right_table_lamp",
+          "object": "right_nightstand",
+          "confidence": 0.96,
+          "evidence": "A matching gray ceramic lamp with a cream shade is visibly sitting on the right bedside table."
+        },
+        "confidence": 0.96
+      },
+      {
+        "type": "bedside_tabletop_support",
+        "id": "right_books_stack",
+        "support_id": "right_nightstand",
+        "action": "keep",
+        "relation": {
+          "id": "reference_tabletop_support_037",
+          "type": "on",
+          "subject": "right_books_stack",
+          "object": "right_nightstand",
+          "confidence": 0.86,
+          "evidence": "A short flat stack of books is visible on the right nightstand near the plant."
+        },
+        "confidence": 0.86
+      },
+      {
+        "type": "bedside_tabletop_support",
+        "id": "right_nightstand_plant",
+        "support_id": "right_nightstand",
+        "action": "keep",
+        "relation": {
+          "id": "reference_tabletop_support_037",
+          "type": "on",
+          "subject": "right_nightstand_plant",
+          "object": "right_nightstand",
+          "confidence": 0.9,
+          "evidence": "A small leafy green plant in a light pot sits on the right nightstand near the books and lamp."
+        },
+        "confidence": 0.9
+      }
+    ],
+    "skipped": [],
+    "created": [],
+    "relabelled": [],
+    "removed_relations": [
+      {
+        "id": "reference_tabletop_support_038",
+        "type": "on",
+        "subject": "left_table_lamp",
+        "object": "left_nightstand",
+        "confidence": 0.95,
+        "evidence": "A gray lamp with a cream shade is visibly sitting on the left bedside table."
+      },
+      {
+        "id": "reference_tabletop_support_038",
+        "type": "on",
+        "subject": "alarm_clock",
+        "object": "left_nightstand",
+        "confidence": 0.93,
+        "evidence": "A small round analog clock sits near the right side of the left nightstand, beside the lamp."
+      },
+      {
+        "id": "reference_tabletop_support_038",
+        "type": "on",
+        "subject": "right_table_lamp",
+        "object": "right_nightstand",
+        "confidence": 0.95,
+        "evidence": "A matching gray lamp with a cream shade is visibly sitting on the right bedside table."
+      },
+      {
+        "id": "reference_tabletop_support_038",
+        "type": "on",
+        "subject": "right_books_stack",
+        "object": "right_nightstand",
+        "confidence": 0.88,
+        "evidence": "A short stack of books lies flat on the left-front area of the right nightstand."
+      },
+      {
+        "id": "reference_tabletop_support_038",
+        "type": "on",
+        "subject": "right_nightstand_plant",
+        "object": "right_nightstand",
+        "confidence": 0.9,
+        "evidence": "A small green plant in a white pot sits on the right nightstand near the books and lamp."
+      }
+    ],
+    "removed_objects": [],
+    "reused_create_requests": [],
+    "fix_count": 5,
+    "ok": true,
+    "allow_create_missing": false,
+    "raw_report": {
+      "schema": "tree_sage_bedside_tabletop_reference_agent_v1",
+      "supports": [
+        {
+          "support_id": "left_nightstand",
+          "visible_children": [
+            {
+              "role": "lamp",
+              "object_id": "left_table_lamp",
+              "action": "keep",
+              "support_id": "left_nightstand",
+              "category": "table lamp",
+              "description": "gray ceramic table lamp with cream fabric shade on left nightstand",
+              "asset_prompt": "",
+              "confidence": 0.96,
+              "evidence": "A gray ceramic lamp with a cream shade is visibly sitting on the left bedside table."
+            },
+            {
+              "role": "clock",
+              "object_id": "alarm_clock",
+              "action": "keep",
+              "support_id": "left_nightstand",
+              "category": "alarm clock",
+              "description": "small round analog alarm clock on left nightstand",
+              "asset_prompt": "",
+              "confidence": 0.93,
+              "evidence": "A small round analog alarm clock sits on the right side of the left nightstand beside the lamp."
+            }
+          ]
+        },
+        {
+          "support_id": "right_nightstand",
+          "visible_children": [
+            {
+              "role": "lamp",
+              "object_id": "right_table_lamp",
+              "action": "keep",
+              "support_id": "right_nightstand",
+              "category": "table lamp",
+              "description": "gray ceramic table lamp with cream fabric shade on right nightstand",
+              "asset_prompt": "",
+              "confidence": 0.96,
+              "evidence": "A matching gray ceramic lamp with a cream shade is visibly sitting on the right bedside table."
+            },
+            {
+              "role": "books",
+              "object_id": "right_books_stack",
+              "action": "keep",
+              "support_id": "right_nightstand",
+              "category": "book stack",
+              "description": "small stack of books on right nightstand",
+              "asset_prompt": "",
+              "confidence": 0.86,
+              "evidence": "A short flat stack of books is visible on the right nightstand near the plant."
+            },
+            {
+              "role": "plant",
+              "object_id": "right_nightstand_plant",
+              "action": "keep",
+              "support_id": "right_nightstand",
+              "category": "potted plant",
+              "description": "small leafy plant in white pot on right nightstand",
+              "asset_prompt": "",
+              "confidence": 0.9,
+              "evidence": "A small leafy green plant in a light pot sits on the right nightstand near the books and lamp."
+            }
+          ]
+        }
+      ],
+      "remove_from_bedside": [],
+      "notes": [
+        "Only visible tabletop children on the left nightstand are the lamp and alarm clock.",
+        "The right nightstand visibly holds the lamp, small plant, and book stack; the plant and books overlap slightly but both are supported by the right nightstand."
+      ]
+    },
+    "removed_object_count": 0
+  },
+  "_floor_covering_underlay_support_report": {
+    "schema": "tree_sage_floor_covering_underlay_support_v1",
+    "enabled": true,
+    "fixes": [
+      {
+        "type": "floor_covering_visual_layer_relation",
+        "id": "queen_bed",
+        "rug_id": "area_rug",
+        "relation_id": "rel_009",
+        "relation_type": "near",
+        "evidence": "rug extends under and in front of bed visually",
+        "note": "Floor coverings are visual floor layers, not ordinary support parents; large furniture may partly overlap rug and floor."
+      }
+    ],
+    "fix_count": 1,
+    "ok": true
+  },
+  "_functional_spatial_clusters": [
+    {
+      "cluster_id": "functional_same_wall_storage_door_cluster_00",
+      "type": "same_wall_storage_door_cluster",
+      "anchor_id": "tall_wardrobe",
+      "members": [
+        "tall_wardrobe",
+        "white_door"
+      ],
+      "member_roles": {
+        "tall_wardrobe": "wall_storage",
+        "white_door": "door"
+      },
+      "confidence": 0.78,
+      "constraints": {
+        "same_wall": "wall_east",
+        "no_tangent_overlap": true,
+        "preserve_wall_tangent_order": true
+      },
+      "reference_bbox": [
+        0.801,
+        0.163,
+        1.0,
+        0.841
+      ],
+      "reference_center": [
+        0.9005,
+        0.502
+      ],
+      "evidence": "Doors and floor storage on the same wall should be adjacent along the wall, not tangent-overlapping."
+    },
+    {
+      "cluster_id": "functional_window_curtain_cluster_01",
+      "type": "window_curtain_cluster",
+      "anchor_id": "left_window",
+      "members": [
+        "left_window",
+        "curtain_rod"
+      ],
+      "member_roles": {
+        "left_window": "window",
+        "curtain_rod": "curtain"
+      },
+      "confidence": 0.76,
+      "constraints": {
+        "same_wall_plane": true,
+        "curtain_matches_window_span": true
+      },
+      "reference_bbox": [
+        0.047,
+        0.11,
+        0.171,
+        0.569
+      ],
+      "reference_center": [
+        0.109,
+        0.3395
+      ],
+      "evidence": "Window, curtain, and curtain rod should be handled as one wall fixture group."
+    },
+    {
+      "cluster_id": "functional_rug_underlay_cluster_02",
+      "type": "rug_underlay_cluster",
+      "anchor_id": "area_rug",
+      "members": [
+        "area_rug",
+        "queen_bed",
+        "left_dresser"
+      ],
+      "member_roles": {
+        "area_rug": "visual_floor_underlay",
+        "queen_bed": "object_on_visual_underlay",
+        "left_dresser": "object_on_visual_underlay"
+      },
+      "confidence": 0.74,
+      "constraints": {
+        "thin_visual_layer": true,
+        "does_not_create_support_parent": true
+      },
+      "reference_bbox": [
+        0.0,
+        0.46,
+        1.0,
+        0.979
+      ],
+      "reference_center": [
+        0.5,
+        0.7195
+      ],
+      "evidence": "Rug/carpet is a thin visual floor layer; objects may visually overlap it without support-tree parenting."
+    }
+  ],
+  "_branch_reference_by_root": {
+    "landscape_wall_art": {
+      "root_object": "landscape_wall_art",
+      "priority_rank": 1,
+      "wall_relation": {
+        "mode": "attached",
+        "wall_id": "wall_north",
+        "confidence": 0.98
+      },
+      "reference_position": "back_wall",
+      "scale_relation": "medium",
+      "evidence": "large framed landscape is mounted centered above the bed on the back wall"
+    },
+    "left_window": {
+      "root_object": "left_window",
+      "priority_rank": 2,
+      "wall_relation": {
+        "mode": "attached",
+        "wall_id": "wall_west",
+        "confidence": 0.91
+      },
+      "reference_position": "left_wall",
+      "scale_relation": "medium",
+      "evidence": "black-framed window is built into the left wall above the dresser"
+    },
+    "curtain_rod": {
+      "root_object": "curtain_rod",
+      "priority_rank": 3,
+      "wall_relation": {
+        "mode": "attached",
+        "wall_id": "wall_west",
+        "confidence": 0.86
+      },
+      "reference_position": "left_wall",
+      "scale_relation": "small",
+      "evidence": "black rod is mounted horizontally above the left window"
+    },
+    "left_wall_botanical_art": {
+      "root_object": "left_wall_botanical_art",
+      "priority_rank": 4,
+      "wall_relation": {
+        "mode": "attached",
+        "wall_id": "wall_west",
+        "confidence": 0.82
+      },
+      "reference_position": "left_wall",
+      "scale_relation": "small",
+      "evidence": "partial framed botanical print hangs on the far left wall"
+    },
+    "white_door": {
+      "root_object": "white_door",
+      "priority_rank": 5,
+      "wall_relation": {
+        "mode": "attached",
+        "wall_id": "wall_east",
+        "confidence": 0.78
+      },
+      "reference_position": "right_wall",
+      "scale_relation": "medium",
+      "evidence": "white paneled door is set into the far right wall plane"
+    },
+    "tall_wardrobe": {
+      "root_object": "tall_wardrobe",
+      "priority_rank": 6,
+      "wall_relation": {
+        "mode": "against",
+        "wall_id": "wall_east",
+        "confidence": 0.78
+      },
+      "reference_position": "right_wall",
+      "scale_relation": "large_anchor",
+      "evidence": "tall wardrobe stands flush along the right side wall beside the door"
+    },
+    "left_dresser": {
+      "root_object": "left_dresser",
+      "priority_rank": 7,
+      "wall_relation": {
+        "mode": "against",
+        "wall_id": "wall_west",
+        "confidence": 0.78
+      },
+      "reference_position": "left_wall",
+      "scale_relation": "large_anchor",
+      "evidence": "low dresser runs along the left wall under the window and supports the plant and books"
+    },
+    "queen_bed": {
+      "root_object": "queen_bed",
+      "priority_rank": 8,
+      "wall_relation": {
+        "mode": "against",
+        "wall_id": "wall_north",
+        "confidence": 0.92
+      },
+      "reference_position": "back_wall",
+      "scale_relation": "large_anchor",
+      "evidence": "bed headboard is centered and flush against the back wall"
+    },
+    "left_nightstand": {
+      "root_object": "left_nightstand",
+      "priority_rank": 9,
+      "wall_relation": {
+        "mode": "against",
+        "wall_id": "wall_north",
+        "confidence": 0.83
+      },
+      "reference_position": "back_wall",
+      "scale_relation": "medium",
+      "evidence": "left nightstand sits beside the bed against the back wall and owns the lamp and clock"
+    },
+    "right_nightstand": {
+      "root_object": "right_nightstand",
+      "priority_rank": 10,
+      "wall_relation": {
+        "mode": "against",
+        "wall_id": "wall_north",
+        "confidence": 0.83
+      },
+      "reference_position": "back_wall",
+      "scale_relation": "medium",
+      "evidence": "right nightstand sits beside the bed against the back wall and owns the lamp, books, and plant"
+    },
+    "area_rug": {
+      "root_object": "area_rug",
+      "priority_rank": 11,
+      "wall_relation": {
+        "mode": "none",
+        "wall_id": null,
+        "confidence": 0.0
+      },
+      "reference_position": "front",
+      "scale_relation": "large_anchor",
+      "evidence": "large rectangular rug lies on the floor under and in front of the bed"
+    }
+  }
+}

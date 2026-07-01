@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local secrets and machine-specific config
+.env
+*.env.local
+key.json
+sage/server/key.json
+
+# Large external dependencies
+models/
+external/
+third_party/
+
+# Generated data and experiment outputs
+outputs/
+runs/
+data/
+tmp/
+*.glb
+*.blend
+*.obj
+*.ply
+*.exr
+
+# Optional example source images can be committed intentionally if desired.
+!examples/**/reference_*.png
+examples/**/source_images/
+

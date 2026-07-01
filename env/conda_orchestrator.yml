@@ -1,0 +1,21 @@
+name: tree-sage-flow2
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pillow
+  - scipy
+  - shapely
+  - matplotlib
+  - pip:
+      - trimesh>=4.0
+      - requests>=2.31
+      - opencv-python>=4.8
+      - transformers>=4.44
+      - torch>=2.5.1
+      - torchvision>=0.20.1
+      - mujoco==3.3.4
+

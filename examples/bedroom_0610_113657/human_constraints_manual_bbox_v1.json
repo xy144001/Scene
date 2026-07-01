@@ -1,0 +1,38 @@
+{
+  "schema": "tree_sage_human_constraints_v1",
+  "notes": [
+    "Manual constraints for the 2026-06-10 11:36:57 bedroom reference. These encode bbox projection overlaps that center-only ordering misses."
+  ],
+  "bbox_projection_overlaps": [
+    {
+      "left_unit_id": "landscape_wall_art",
+      "right_unit_id": "queen_bed",
+      "axis": "x",
+      "wall_id": "wall_north",
+      "target_scene_overlap": 0.03,
+      "importance": "required",
+      "confidence": 1.0,
+      "evidence": "The landscape wall art horizontally overlaps the bed/headboard in the reference."
+    },
+    {
+      "left_unit_id": "left_dresser",
+      "right_unit_id": "left_wall_botanical_art",
+      "axis": "y",
+      "wall_id": "wall_west",
+      "target_scene_overlap": 0.03,
+      "importance": "required",
+      "confidence": 1.0,
+      "evidence": "The left wall botanical art is above the left dresser, so their side-wall depth projections should overlap."
+    },
+    {
+      "left_unit_id": "window_curtain_cluster:left_window",
+      "right_unit_id": "left_dresser",
+      "axis": "y",
+      "wall_id": "wall_west",
+      "target_scene_overlap": 0.03,
+      "importance": "required",
+      "confidence": 1.0,
+      "evidence": "The left window and curtain cluster overlaps the left dresser along the side-wall depth direction in the reference."
+    }
+  ]
+}

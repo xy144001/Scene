@@ -1,0 +1,17 @@
+{
+  "schema": "tree_sage_asset_reuse_aliases_v1",
+  "scene": "bedroom_image_reference",
+  "notes": [
+    "Planner object ids may change between full image-only runs even when the semantic object is unchanged.",
+    "These aliases let the flow reuse validated Trellis2/cleaned assets while materializing them under the current planner ids."
+  ],
+  "aliases": {
+    "double_bed": "queen_bed",
+    "left_table_lamp": "table_lamp",
+    "dresser": "right_dresser",
+    "small_right_drawer_unit": "small_right_chest",
+    "center_small_plant": "wardrobe_top_plant",
+    "small_right_top_plant": "right_chest_plant",
+    "black_pillow": "black_front_pillow"
+  }
+}

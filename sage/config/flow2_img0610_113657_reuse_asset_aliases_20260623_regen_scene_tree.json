@@ -1,0 +1,43 @@
+{
+  "schema": "tree_sage_asset_reuse_aliases_v1",
+  "scene": "img0610_113657_regen_scene_tree_reuse_assets_20260623",
+  "notes": [
+    "Run-specific alias file for fresh scene-tree regeneration of ChatGPT Image 2026-06-10 11_36_57.",
+    "Assets are reused from the cleaned Trellis2 directory; scene graph, support tree, scale, pose, and layout are regenerated.",
+    "Adds aliases for the fresh graph book-stack ids observed in the 2026-06-23 rerun."
+  ],
+  "aliases": {
+    "bed": "queen_bed",
+    "landscape_wall_art": "framed_landscape_art",
+    "center_landscape_art": "framed_landscape_art",
+    "back_wall_landscape_art": "framed_landscape_art",
+    "dresser": "left_dresser",
+    "dresser_plant": "left_dresser_plant",
+    "plant_on_dresser": "left_dresser_plant",
+    "left_wood_dresser": "left_dresser",
+    "tall_wardrobe": "wardrobe",
+    "left_nightstand_book_stack": "left_stack_of_books",
+    "left_books_stack": "left_stack_of_books",
+    "right_nightstand_book_stack": "right_stack_of_books",
+    "right_books_stack": "right_stack_of_books",
+    "right_potted_plant": "right_nightstand_plant",
+    "book_stack_on_right_nightstand": "right_stack_of_books",
+    "windowsill_books": "left_stack_of_books",
+    "window_books": "left_stack_of_books",
+    "window_book_stack": "left_stack_of_books",
+    "window_books_stack": "left_stack_of_books",
+    "window_sill_book_stack": "left_stack_of_books",
+    "book_stack_on_window_sill": "left_stack_of_books",
+    "left_window_book_stack": "left_stack_of_books",
+    "right_nightstand_books": "right_stack_of_books",
+    "right_book_stack": "right_stack_of_books",
+    "window": "left_window",
+    "left_curtain": "left_curtain_panel",
+    "right_curtain": "right_curtain_panel",
+    "door": "right_door",
+    "white_door": "right_door",
+    "left_wall_botanical_art": "left_wall_botanical_print",
+    "left_botanical_wall_art": "left_wall_botanical_print",
+    "left_botanical_art": "left_wall_botanical_print"
+  }
+}

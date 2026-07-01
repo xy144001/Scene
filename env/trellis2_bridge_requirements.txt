@@ -1,0 +1,15 @@
+# Use the official TRELLIS.2 environment as the base, then ensure these are present.
+# CUDA/PyTorch wheels should match the target machine.
+numpy>=1.24
+pillow>=9.3
+opencv-python>=4.8
+scikit-image
+torch>=2.5.1
+torchvision>=0.20.1
+diffusers>=0.35.1
+transformers>=4.44
+accelerate>=0.23
+trimesh>=4.0
+xatlas
+o_voxel
+
