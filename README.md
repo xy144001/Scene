@@ -24,6 +24,8 @@ Flow2 的主线是：
 - `env/`: 依赖和路径模板。
 - `docs/`: 更长的设计文档和调试记录。
 
+建议新同学先读 `docs/FLOW2_MODULES_AND_EFFECTS.md`。这份文档按模块解释每一步怎么起效、输出什么报告、失败时该查哪里。
+
 ## Setup
 
 1. 准备代码目录。
@@ -119,4 +121,3 @@ scripts/run_bedroom_0610_113657_plan_only_smoke.sh
 - 窗户窗帘簇按固定顺序处理：左窗帘、窗户、右窗帘；solver 会按 reference 判断 tight/medium/loose 紧密程度。
 - 人工约束文件是可选模块，格式见 `examples/bedroom_0610_113657/human_constraints_manual_bbox_v1.json`。
 - 如果只想看布局流程，可以先用 `--plan-only` 或 `--reuse-asset-dir`，避免每次重跑 TRELLIS.2。
-
