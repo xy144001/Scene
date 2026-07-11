@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TreeSAGE Local Control</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>TreeSAGE Control</h1>
+        <p id="runtimeStatus">正在连接本地服务</p>
+      </div>
+      <button id="refreshJobs" class="secondary">刷新任务</button>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>流程</h2>
+          <div class="segmented" role="tablist" aria-label="scene mode">
+            <button class="active" data-mode="image_to_scene">图生场景</button>
+            <button data-mode="text_to_scene">文生场景</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>资产来源</h2>
+          <div class="stack">
+            <label class="radio-row">
+              <input type="radio" name="assetStrategy" value="generate_from_scratch" checked />
+              <span>从 0 生成资产</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="assetStrategy" value="asset_library" />
+              <span>调用资产库</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>数据库接口</h2>
+          <label>
+            Trellis2 资产库
+            <input id="trellisAssetLibraryDir" type="text" placeholder="/data/xy/.../assets_trellis2" />
+          </label>
+          <label>
+            铰接物体资产库
+            <input id="articulatedAssetLibraryDir" type="text" placeholder="reserved" />
+          </label>
+          <label>
+            复用 alias
+            <input id="reuseAssetAliasFile" type="text" placeholder="asset_alias.json" />
+          </label>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <form id="sceneForm" class="panel form-panel">
+          <div class="form-head">
+            <div>
+              <h2 id="formTitle">图生场景</h2>
+              <p id="modeNote">image2 物体图 + Trellis2 资产 + 三阶段布局 + critic</p>
+            </div>
+            <label class="switch">
+              <input id="runNow" type="checkbox" />
+              <span>立即运行</span>
+            </label>
+          </div>
+
+          <div id="imageSceneFields" class="field-grid">
+            <label class="wide">
+              Reference 图
+              <input id="referenceImage" type="text" placeholder="/home/xy/SAGE/ChatGPT Image ....png" />
+            </label>
+            <label>
+              场景名
+              <input id="sceneName" type="text" value="image_scene" />
+            </label>
+            <label>
+              输出根目录
+              <input id="outputRoot" type="text" />
+            </label>
+            <label class="wide">
+              image2 物体图目录
+              <input id="assetSourceImageDir" type="text" placeholder="/data/xy/SAGE_runs/.../source_images" />
+            </label>
+            <label class="wide">
+              人工约束 JSON
+              <input id="humanConstraintsFile" type="text" placeholder="可空" />
+            </label>
+            <label class="wide">
+              场景补充文本
+              <textarea id="prompt" rows="4" placeholder="可空"></textarea>
+            </label>
+          </div>
+
+          <div id="textSceneFields" class="field-grid hidden">
+            <label class="wide">
+              文本 prompt
+              <textarea id="textPrompt" rows="7" placeholder="reserved"></textarea>
+            </label>
+            <label>
+              房间类型
+              <input id="roomType" type="text" placeholder="bedroom / living_room / study，可空自动判断" />
+            </label>
+            <label>
+              风格约束
+              <input id="styleConstraints" type="text" placeholder="reserved" />
+            </label>
+            <label class="wide">
+              image2 物体图目录
+              <input id="textAssetSourceImageDir" type="text" placeholder="/data/xy/SAGE_runs/.../source_images" />
+            </label>
+          </div>
+
+          <div class="option-grid">
+            <label class="checkbox-row">
+              <input id="useCritic" type="checkbox" checked />
+              <span>critic</span>
+            </label>
+            <label>
+              critic 轮数
+              <input id="criticIterations" type="number" min="0" max="8" value="3" />
+            </label>
+            <label>
+              layout 候选
+              <input id="candidateCount" type="number" min="1" max="8" value="3" />
+            </label>
+            <label>
+              接受分
+              <input id="criticAcceptScore" type="number" min="0" max="1" step="0.01" value="0.72" />
+            </label>
+            <label>
+              Trellis pipeline
+              <select id="trellisPipelineType">
+                <option value="512">512</option>
+                <option value="1024">1024</option>
+                <option value="1024_cascade">1024_cascade</option>
+                <option value="1536_cascade">1536_cascade</option>
+              </select>
+            </label>
+            <label>
+              texture size
+              <input id="textureSize" type="number" min="256" max="4096" step="256" value="1024" />
+            </label>
+            <label>
+              decimation
+              <input id="decimationTarget" type="number" min="10000" max="1000000" step="10000" value="120000" />
+            </label>
+            <label class="checkbox-row">
+              <input id="trellisPreprocessImage" type="checkbox" checked />
+              <span>preprocess image</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="copyReusedAssets" type="checkbox" checked />
+              <span>复制复用资产</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="wholeWindowCurtainCluster" type="checkbox" />
+              <span>整体窗帘簇接口</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="planOnly" type="checkbox" />
+              <span>plan only</span>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="previewCommand" type="button">检查配置</button>
+            <button id="createJob" type="button">创建任务</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="inspector">
+        <section class="panel status-panel">
+          <h2>检查</h2>
+          <div id="planSummary" class="plan-summary">等待输入</div>
+          <div id="warnings" class="warnings"></div>
+        </section>
+
+        <section class="panel jobs-panel">
+          <h2>任务</h2>
+          <div id="jobsList" class="jobs-list"></div>
+        </section>
+      </aside>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

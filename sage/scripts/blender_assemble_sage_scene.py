@@ -16,6 +16,130 @@ from mathutils import Matrix, Vector
 TARGET_TYPES = {"MESH", "CURVE", "SURFACE", "META", "FONT"}
 
 
+def normalized_rgba(raw: object, fallback: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    if not isinstance(raw, (list, tuple)) or len(raw) < 3:
+        return fallback
+    try:
+        values = [float(value) for value in raw[:4]]
+    except (TypeError, ValueError):
+        return fallback
+    if max(values[:3]) > 1.0:
+        values[:3] = [value / 255.0 for value in values[:3]]
+    alpha = values[3] if len(values) > 3 else fallback[3]
+    rgba = values[:3] + [alpha]
+    return tuple(max(0.0, min(1.0, value)) for value in rgba)  # type: ignore[return-value]
+
+
+def shifted_color(color: tuple[float, float, float, float], factor: float) -> tuple[float, float, float, float]:
+    rgb = [max(0.0, min(1.0, channel * factor)) for channel in color[:3]]
+    return (rgb[0], rgb[1], rgb[2], color[3])
+
+
+def make_color_ramp(
+    nodes: bpy.types.Nodes,
+    color_a: tuple[float, float, float, float],
+    color_b: tuple[float, float, float, float],
+    position_a: float = 0.2,
+    position_b: float = 1.0,
+) -> bpy.types.Node:
+    ramp = nodes.new(type="ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = position_a
+    ramp.color_ramp.elements[0].color = color_a
+    ramp.color_ramp.elements[1].position = position_b
+    ramp.color_ramp.elements[1].color = color_b
+    return ramp
+
+
+def apply_bump_from_fac(
+    nodes: bpy.types.Nodes,
+    links: bpy.types.NodeLinks,
+    fac_output: bpy.types.NodeSocket,
+    bsdf: bpy.types.Node,
+    strength: float,
+    distance: float,
+) -> None:
+    if "Normal" not in bsdf.inputs or strength <= 0.0:
+        return
+    bump = nodes.new(type="ShaderNodeBump")
+    if "Strength" in bump.inputs:
+        bump.inputs["Strength"].default_value = strength
+    if "Distance" in bump.inputs:
+        bump.inputs["Distance"].default_value = distance
+    links.new(fac_output, bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+
+def apply_procedural_texture(
+    mat: bpy.types.Material,
+    bsdf: bpy.types.Node,
+    base_color: tuple[float, float, float, float],
+    spec: dict[str, object],
+) -> None:
+    if not mat.node_tree:
+        return
+    texture_type = str(spec.get("texture_type") or "")
+    if not texture_type.startswith("procedural_"):
+        return
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    secondary = normalized_rgba(spec.get("secondary_color"), shifted_color(base_color, 1.08))
+    grain = normalized_rgba(spec.get("grain_color"), shifted_color(base_color, 0.72))
+    if texture_type in {"procedural_painted_plaster", "procedural_limewash", "procedural_matte_paint"}:
+        noise = nodes.new(type="ShaderNodeTexNoise")
+        noise.inputs["Scale"].default_value = float(spec.get("noise_scale", 42.0) or 42.0)
+        noise.inputs["Detail"].default_value = float(spec.get("noise_detail", 8.0) or 8.0)
+        noise.inputs["Roughness"].default_value = 0.56
+        ramp = make_color_ramp(nodes, shifted_color(base_color, 0.94), secondary, 0.12, 1.0)
+        links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+        if "Base Color" in bsdf.inputs:
+            links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+        apply_bump_from_fac(
+            nodes,
+            links,
+            noise.outputs["Fac"],
+            bsdf,
+            float(spec.get("bump_strength", 0.014) or 0.014),
+            0.06,
+        )
+    elif texture_type == "procedural_wood_plank":
+        wave = nodes.new(type="ShaderNodeTexWave")
+        try:
+            wave.wave_type = "RINGS"
+        except Exception:
+            pass
+        wave.inputs["Scale"].default_value = float(spec.get("wave_scale", 18.0) or 18.0)
+        wave.inputs["Distortion"].default_value = float(spec.get("wave_distortion", 8.0) or 8.0)
+        ramp = make_color_ramp(nodes, grain, secondary, 0.18, 1.0)
+        links.new(wave.outputs["Color"], ramp.inputs["Fac"])
+        if "Base Color" in bsdf.inputs:
+            links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+        apply_bump_from_fac(
+            nodes,
+            links,
+            wave.outputs["Color"],
+            bsdf,
+            float(spec.get("bump_strength", 0.03) or 0.03),
+            0.045,
+        )
+    elif texture_type == "procedural_low_pile_carpet":
+        noise = nodes.new(type="ShaderNodeTexNoise")
+        noise.inputs["Scale"].default_value = float(spec.get("noise_scale", 72.0) or 72.0)
+        noise.inputs["Detail"].default_value = float(spec.get("noise_detail", 12.0) or 12.0)
+        noise.inputs["Roughness"].default_value = 0.7
+        ramp = make_color_ramp(nodes, shifted_color(base_color, 0.88), secondary, 0.25, 1.0)
+        links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+        if "Base Color" in bsdf.inputs:
+            links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+        apply_bump_from_fac(
+            nodes,
+            links,
+            noise.outputs["Fac"],
+            bsdf,
+            float(spec.get("bump_strength", 0.018) or 0.018),
+            0.035,
+        )
+
+
 def parse_args() -> argparse.Namespace:
     argv = sys.argv
     if "--" in argv:
@@ -48,7 +172,13 @@ def make_material(
         if "Alpha" in bsdf.inputs:
             bsdf.inputs["Alpha"].default_value = color[3]
         if "Roughness" in bsdf.inputs:
-            bsdf.inputs["Roughness"].default_value = 0.82
+            roughness = 0.82
+            if isinstance(spec, dict):
+                try:
+                    roughness = float(spec.get("roughness", roughness) or roughness)
+                except (TypeError, ValueError):
+                    pass
+            bsdf.inputs["Roughness"].default_value = max(0.0, min(1.0, roughness))
     texture_image = None
     if isinstance(spec, dict) and spec.get("texture_image"):
         candidate = Path(str(spec.get("texture_image")))
@@ -62,6 +192,8 @@ def make_material(
         tex.image = bpy.data.images.load(str(texture_image), check_existing=True)
         tex.extension = "REPEAT"
         links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    elif isinstance(spec, dict) and mat.node_tree and bsdf:
+        apply_procedural_texture(mat, bsdf, color, spec)
     return mat
 
 
@@ -69,17 +201,12 @@ def material_color_from_spec(spec: object, fallback: tuple[float, float, float, 
     if not isinstance(spec, dict):
         return fallback
     raw_color = spec.get("base_color") or spec.get("color") or spec.get("diffuse_color")
-    if not isinstance(raw_color, (list, tuple)) or len(raw_color) < 3:
-        return fallback
+    color = normalized_rgba(raw_color, fallback)
     try:
-        values = [float(value) for value in raw_color[:4]]
+        alpha = float(spec.get("alpha", color[3]) or color[3])
     except (TypeError, ValueError):
-        return fallback
-    if max(values[:3]) > 1.0:
-        values[:3] = [value / 255.0 for value in values[:3]]
-    alpha = float(spec.get("alpha", values[3] if len(values) > 3 else fallback[3]))
-    rgba = values[:3] + [alpha]
-    return tuple(max(0.0, min(1.0, value)) for value in rgba)  # type: ignore[return-value]
+        alpha = color[3]
+    return (color[0], color[1], color[2], max(0.0, min(1.0, alpha)))
 
 
 def material_by_name(

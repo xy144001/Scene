@@ -25,7 +25,7 @@ import trimesh
 from PIL import Image, ImageDraw, ImageFont
 
 
-DEFAULT_BLENDER = os.environ.get("SAGE_BLENDER_BIN", "/data/xy/tools/blender-4.3.2-linux-x64/blender")
+DEFAULT_BLENDER = "/data/xy/tools/blender-4.3.2-linux-x64/blender"
 
 
 OFFICIAL_PROMPTS = {
@@ -985,6 +985,7 @@ def _detect_low_horizontal_sheet_faces(mesh: trimesh.Trimesh, scene_bounds: np.n
 def _artifact_cleanup_policy(obj: dict[str, Any]) -> dict[str, Any]:
     text = _category_text(obj)
     is_bookshelf = "bookshelf" in text or "book shelf" in text
+    is_foliage = any(keyword in text for keyword in ("plant", "potted", "foliage", "trailing"))
     if _is_protected_wall_flat_asset(obj):
         return {
             "broad_thin_component_cleanup": False,
@@ -992,6 +993,14 @@ def _artifact_cleanup_policy(obj: dict[str, Any]) -> dict[str, Any]:
             "ground_component_cleanup": False,
             "integrated_low_sheet_regeneration": False,
             "reason": "protected_wall_flat_asset_planes",
+        }
+    if is_foliage:
+        return {
+            "broad_thin_component_cleanup": False,
+            "bbox_fragment_cleanup": False,
+            "ground_component_cleanup": False,
+            "integrated_low_sheet_regeneration": False,
+            "reason": "protected_foliage_complex_components",
         }
     planar_keywords = [
         "desk",
@@ -1355,6 +1364,11 @@ def assemble_scene_blender(blender_bin: str, plan_path: Path, asset_dir: Path, o
     (output_glb.parent / "blender_assemble_stderr.txt").write_text(proc.stderr, encoding="utf-8")
     if proc.returncode != 0:
         raise RuntimeError(f"Blender assembly failed with code {proc.returncode}: {proc.stderr[-1000:]}")
+    if not output_glb.exists() or output_glb.stat().st_size <= 0:
+        raise RuntimeError(
+            "Blender assembly did not produce the expected GLB "
+            f"{output_glb}: {proc.stderr[-1000:]}"
+        )
 
 
 def render_preview(plan: dict[str, Any], output_png: Path) -> None:

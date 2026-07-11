@@ -226,14 +226,7 @@ print(json.dumps({{"create": create_result, "simulate": simulate_result}}, defau
 """
     env = os.environ.copy()
     env["SAGE_SIM_BACKEND"] = "mujoco"
-    default_server_path = Path(__file__).resolve().parents[3] / "server"
-    server_pythonpath = os.environ.get("SAGE_SERVER_PYTHONPATH", str(default_server_path))
-    existing_pythonpath = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = (
-        server_pythonpath
-        if not existing_pythonpath
-        else os.pathsep.join([server_pythonpath, existing_pythonpath])
-    )
+    env["PYTHONPATH"] = "/home/xy/SAGE/sage/server"
     try:
         proc = subprocess.run(
             [python_bin, "-c", code],

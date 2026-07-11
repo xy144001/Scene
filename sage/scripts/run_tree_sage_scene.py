@@ -42,7 +42,11 @@ from run_selfmade_trellis_scene import (
     _clamp_object_to_room,
     _round_yaw_90,
 )
-from create_tree_sage_fallback_assets import FACTORIES as PARAMETRIC_ASSET_FACTORIES, make_window as make_parametric_window_asset
+from create_tree_sage_fallback_assets import (
+    FACTORIES as PARAMETRIC_ASSET_FACTORIES,
+    make_white_double_closet_door as make_parametric_white_double_closet_door_asset,
+    make_window as make_parametric_window_asset,
+)
 from tree_sage_flow2.agents.codex_runner import run_codex_json_agent
 from tree_sage_flow2.assets.source_report import build_asset_source_report as build_flow2_asset_source_report
 from tree_sage_flow2.io import extract_json, write_json
@@ -169,6 +173,21 @@ WINDOW_CURTAIN_CLUSTER_PANEL_MIN_SPAN = float(
 WINDOW_CURTAIN_CLUSTER_PANEL_MAX_SPAN = float(
     os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_PANEL_MAX_SPAN", "0.72")
 )
+WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MAX_RATIO = float(
+    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MAX_RATIO", "0.64")
+)
+WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MAX_SPAN = float(
+    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MAX_SPAN", "0.72")
+)
+WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MIN_SPAN = float(
+    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MIN_SPAN", "0.46")
+)
+WINDOW_CURTAIN_CLUSTER_DECOR_RESERVE_RATIO = float(
+    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_DECOR_RESERVE_RATIO", "1.0")
+)
+WINDOW_CURTAIN_CLUSTER_DECOR_RESERVE_MAX = float(
+    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_DECOR_RESERVE_MAX", "0.42")
+)
 WINDOW_CURTAIN_CLUSTER_ROD_OVERHANG = float(
     os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_ROD_OVERHANG", "0.10")
 )
@@ -182,7 +201,7 @@ WINDOW_CURTAIN_CLUSTER_MEDIUM_REF_GAP_RATIO = float(
     os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_MEDIUM_REF_GAP_RATIO", "0.18")
 )
 WINDOW_CURTAIN_CLUSTER_TIGHT_GAP = float(
-    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_TIGHT_GAP", "0.015")
+    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_TIGHT_GAP", "0.035")
 )
 WINDOW_CURTAIN_CLUSTER_MEDIUM_GAP = float(
     os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_MEDIUM_GAP", "0.06")
@@ -190,6 +209,23 @@ WINDOW_CURTAIN_CLUSTER_MEDIUM_GAP = float(
 WINDOW_CURTAIN_CLUSTER_LOOSE_GAP = float(
     os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_LOOSE_GAP", "0.12")
 )
+WINDOW_CURTAIN_CLUSTER_TOP_EDGE_MAX_OFFSET = float(
+    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_TOP_EDGE_MAX_OFFSET", "0.08")
+)
+WINDOW_CURTAIN_CLUSTER_MIN_PANEL_HEIGHT = float(
+    os.environ.get("SAGE_WINDOW_CURTAIN_CLUSTER_MIN_PANEL_HEIGHT", "1.05")
+)
+PARAMETRIC_CURTAIN_PANEL_FALLBACK = os.environ.get("SAGE_PARAMETRIC_CURTAIN_PANEL_FALLBACK", "0").strip().lower() not in {
+    "0",
+    "false",
+    "no",
+}
+FINAL_VISUAL_CRITIC_ACCEPT_SCORE = float(os.environ.get("SAGE_FINAL_VISUAL_CRITIC_ACCEPT_SCORE", "0.74"))
+FINAL_VISUAL_CRITIC_IMPROVEMENT_EPS = float(os.environ.get("SAGE_FINAL_VISUAL_CRITIC_IMPROVEMENT_EPS", "0.03"))
+FINAL_VISUAL_CRITIC_BED_MAX_ROOM_DEPTH_RATIO = float(
+    os.environ.get("SAGE_FINAL_VISUAL_CRITIC_BED_MAX_ROOM_DEPTH_RATIO", "0.72")
+)
+FINAL_VISUAL_CRITIC_BED_MAX_DEPTH = float(os.environ.get("SAGE_FINAL_VISUAL_CRITIC_BED_MAX_DEPTH", "2.55"))
 FINE_SPATIAL_ORDER_BED_LAMP_TOP_REF_TOLERANCE = float(
     os.environ.get("SAGE_FINE_SPATIAL_ORDER_BED_LAMP_TOP_REF_TOLERANCE", "0.035")
 )
@@ -1240,6 +1276,37 @@ def _remove_scene_graph_support_relations(scene_graph: dict[str, Any], object_id
     return removed
 
 
+def _remove_scene_graph_support_relations_to_supports(
+    scene_graph: dict[str, Any],
+    object_id: str,
+    support_ids: set[str],
+) -> list[dict[str, Any]]:
+    relations = scene_graph.setdefault("relations", [])
+    if not isinstance(relations, list):
+        scene_graph["relations"] = []
+        return []
+    removed = [
+        dict(rel)
+        for rel in relations
+        if isinstance(rel, dict)
+        and str(rel.get("subject")) == object_id
+        and str(rel.get("type")) in SUPPORT_RELATIONS
+        and str(rel.get("object")) in support_ids
+    ]
+    if removed:
+        relations[:] = [
+            rel
+            for rel in relations
+            if not (
+                isinstance(rel, dict)
+                and str(rel.get("subject")) == object_id
+                and str(rel.get("type")) in SUPPORT_RELATIONS
+                and str(rel.get("object")) in support_ids
+            )
+        ]
+    return removed
+
+
 def _append_scene_graph_support_relation(
     scene_graph: dict[str, Any],
     object_id: str,
@@ -1738,15 +1805,19 @@ def apply_bedside_tabletop_reference_report(
             continue
         existing = _scene_graph_support_relations(scene_graph, object_id)
         candidate = objects.get(object_id)
+        bedside_support_relations = [rel for rel in existing if str(rel.get("object")) in bedside_ids]
+        non_bedside_support_relations = [rel for rel in existing if str(rel.get("object")) not in bedside_ids]
         reason_text = str(item.get("reason") or "").lower()
         candidate_text = (
             f"{object_id} {candidate.get('category', '') if candidate else ''} "
             f"{candidate.get('description', '') if candidate else ''}"
         ).lower()
-        has_bedside_relation = bool(existing) and any(str(rel.get("object")) in bedside_ids for rel in existing)
+        has_bedside_relation = bool(bedside_support_relations)
+        has_non_bedside_support = bool(non_bedside_support_relations)
         false_positive_candidate = (
             candidate
             and confidence >= 0.75
+            and not has_non_bedside_support
             and _is_bedside_tabletop_child_candidate(candidate)
             and (
                 "not visible" in reason_text
@@ -1755,9 +1826,23 @@ def apply_bedside_tabletop_reference_report(
                 or "bedside" in candidate_text
             )
         )
+        if not has_bedside_relation and has_non_bedside_support:
+            report["skipped"].append(
+                {
+                    "id": object_id,
+                    "reason": "remove_from_bedside_preserved_non_bedside_support",
+                    "preserved_supports": [str(rel.get("object")) for rel in non_bedside_support_relations],
+                    "audit_reason": item.get("reason"),
+                    "confidence": confidence,
+                }
+            )
+            continue
         if not has_bedside_relation and not false_positive_candidate:
             continue
-        removed = _remove_scene_graph_support_relations(scene_graph, object_id)
+        if has_bedside_relation:
+            removed = _remove_scene_graph_support_relations_to_supports(scene_graph, object_id, bedside_ids)
+        else:
+            removed = _remove_scene_graph_support_relations(scene_graph, object_id)
         report["removed_relations"].extend(removed)
         has_supported_children = any(
             isinstance(rel, dict)
@@ -1768,6 +1853,7 @@ def apply_bedside_tabletop_reference_report(
         if (
             false_positive_candidate
             and not has_supported_children
+            and not has_non_bedside_support
         ):
             graph_objects[:] = [
                 obj
@@ -2957,6 +3043,8 @@ def refresh_supported_children_after_scale_update(
     }
     children_by_support: dict[str, list[dict[str, Any]]] = {}
     for object_id, obj in objects.items():
+        if _is_hanging_object(obj):
+            continue
         parent_id = parent.get(object_id) or obj.get("support_id")
         if parent_id and str(parent_id) not in {"floor"} | VIRTUAL_WALLS:
             if scoped_ids and str(parent_id) not in scoped_ids:
@@ -3023,6 +3111,8 @@ def refresh_supported_children_after_scale_update(
 
     for object_id in sorted(objects, key=lambda oid: (support_depth(oid), oid)):
         obj = objects[object_id]
+        if _is_hanging_object(obj):
+            continue
         parent_id = parent.get(object_id) or obj.get("support_id")
         if not parent_id or parent_id in {"floor"} | VIRTUAL_WALLS:
             continue
@@ -3142,6 +3232,7 @@ def reproject_supported_children_after_parent_scale_fixes(
             for child_id, child in sorted(objects.items())
             if str(parent.get(child_id) or child.get("support_id") or "") == support_id
             and str(child.get("placement_type") or "on_top") in {"on_top", "on", "inside"}
+            and not _is_hanging_object(child)
         ]
         for child in children:
             child_id = str(child.get("id") or "")
@@ -3217,6 +3308,7 @@ def repair_tabletop_sibling_scale_and_packing(
     plan: dict[str, Any],
     parent: dict[str, str],
     reference_grounding_report: dict[str, Any] | None = None,
+    reference_spatial_order_report: dict[str, Any] | None = None,
     *,
     enabled: bool = True,
     stage: str = "post_scale",
@@ -3230,12 +3322,15 @@ def repair_tabletop_sibling_scale_and_packing(
         "scoped_support_ids": sorted(scoped_support_ids),
         "fixes": [],
         "checks": [],
+        "skipped": [],
         "fix_count": 0,
         "ok": True,
     }
     if not enabled:
         report["reason"] = "disabled"
         return report
+    if reference_spatial_order_report is None and isinstance(plan.get("_reference_spatial_order_report"), dict):
+        reference_spatial_order_report = plan.get("_reference_spatial_order_report")
     objects = {str(obj.get("id")): obj for obj in plan.get("objects", []) if isinstance(obj, dict) and obj.get("id")}
     object_ids_with_children = {
         str(obj.get("support_id"))
@@ -3245,6 +3340,62 @@ def repair_tabletop_sibling_scale_and_packing(
 
     def is_stackable_support_for_child(obj: dict[str, Any]) -> bool:
         return str(obj.get("id") or "") in object_ids_with_children and _is_stackable_tabletop_support_object(obj)
+
+    def reference_tabletop_order_hint(
+        support_id: str,
+        children: list[dict[str, Any]],
+        scene_axis: str,
+    ) -> dict[str, Any] | None:
+        if not isinstance(reference_spatial_order_report, dict):
+            return None
+        groups = reference_spatial_order_report.get("groups")
+        if not isinstance(groups, list):
+            raw_report = reference_spatial_order_report.get("raw_report")
+            groups = raw_report.get("groups") if isinstance(raw_report, dict) else []
+        if not isinstance(groups, list):
+            return None
+        child_ids = [str(child.get("id") or "") for child in children if str(child.get("id") or "")]
+        child_set = set(child_ids)
+        candidates: list[tuple[float, int, dict[str, Any]]] = []
+        for group in groups:
+            if not isinstance(group, dict):
+                continue
+            if str(group.get("scope") or "") != "tabletop":
+                continue
+            if str(group.get("anchor_id") or "") != support_id:
+                continue
+            for reference_axis, order_key in (("x", "left_to_right"), ("y", "front_to_back")):
+                raw_order = group.get(order_key)
+                if not isinstance(raw_order, list):
+                    continue
+                expected = [str(object_id) for object_id in raw_order if str(object_id) in child_set]
+                if len(expected) < 2:
+                    continue
+                mapped_scene_axis = _scene_axis_for_reference_order(reference_axis, objects, expected, parent)
+                if mapped_scene_axis != scene_axis:
+                    continue
+                confidence = _clamp(_safe_float(group.get("confidence"), 0.0), 0.0, 1.0)
+                candidates.append(
+                    (
+                        confidence,
+                        len(expected),
+                        {
+                            "group_id": group.get("group_id"),
+                            "support_id": support_id,
+                            "scope": group.get("scope"),
+                            "order_key": order_key,
+                            "reference_axis": reference_axis,
+                            "scene_axis": mapped_scene_axis,
+                            "expected_order": expected,
+                            "confidence": confidence,
+                            "evidence": group.get("evidence"),
+                        },
+                    )
+                )
+        if not candidates:
+            return None
+        candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        return candidates[0][2]
 
     children_by_support: dict[str, list[dict[str, Any]]] = {}
     for object_id, obj in objects.items():
@@ -3372,20 +3523,34 @@ def repair_tabletop_sibling_scale_and_packing(
         support_extent = float(support_world_extent[axis])
         margin = min(0.06, max(0.03, support_extent * 0.08))
         gap = max(0.045, min(0.08, support_extent * 0.075))
-        ordered = sorted(
-            valid_children,
-            key=lambda child: (
-                (
-                    (_normalized_bbox(_reference_bbox_from_sources(child, reference_grounding_report)) or [0.5, 0.0, 0.5, 0.0])[
-                        0 if axis == "x" else 1
-                    ]
-                    + (_normalized_bbox(_reference_bbox_from_sources(child, reference_grounding_report)) or [0.5, 0.0, 0.5, 0.0])[
-                        2 if axis == "x" else 3
-                    ]
-                )
+        order_hint = reference_tabletop_order_hint(support_id, valid_children, axis)
+
+        def fallback_reference_center(child: dict[str, Any]) -> float:
+            bbox = _normalized_bbox(_reference_bbox_from_sources(child, reference_grounding_report)) or [0.5, 0.0, 0.5, 0.0]
+            low_index = 0 if axis == "x" else 1
+            high_index = 2 if axis == "x" else 3
+            return (float(bbox[low_index]) + float(bbox[high_index])) / 2.0
+
+        if order_hint:
+            expected_index = {object_id: index for index, object_id in enumerate(order_hint["expected_order"])}
+            ordered = sorted(
+                valid_children,
+                key=lambda child: (
+                    expected_index.get(str(child.get("id") or ""), len(expected_index) + 1),
+                    fallback_reference_center(child),
+                    str(child.get("id") or ""),
+                ),
             )
-            / 2.0,
-        )
+            report["checks"].append(
+                {
+                    "stage": stage,
+                    "type": "tabletop_reference_order_applied",
+                    **order_hint,
+                    "children_before_pack": [str(child.get("id") or "") for child in ordered],
+                }
+            )
+        else:
+            ordered = sorted(valid_children, key=lambda child: (fallback_reference_center(child), str(child.get("id") or "")))
         widths = [
             float(_rotated_footprint(child)[0 if axis == "x" else 1])
             for child in ordered
@@ -5276,9 +5441,16 @@ def build_reference_spatial_order_prompt(
     scene_prompt: str,
     scene_graph: dict[str, Any],
     reference_grounding_report: dict[str, Any] | None = None,
+    layout_template_context: dict[str, Any] | None = None,
 ) -> str:
     compact_graph = _compact_spatial_order_graph(scene_graph)
     grounding = _compact_reference_grounding_for_agents(reference_grounding_report)
+    template_guidance = format_layout_template_prompt_context(layout_template_context, "reference_spatial_order")
+    template_block = (
+        f"\nLayout template guidance:\n{template_guidance}\n"
+        if template_guidance
+        else ""
+    )
     return f"""
 You are the reference spatial-order agent for TreeSAGE flow 2.
 Your job is to extract reliable left/right, front/back, and top/bottom object ordering from the Flux reference image before any pose review.
@@ -5292,6 +5464,7 @@ Current graph:
 
 Reference instance map:
 {json.dumps(grounding, ensure_ascii=False, indent=2)}
+{template_block}
 
 Return only JSON:
 {{
@@ -5348,16 +5521,157 @@ def run_codex_reference_spatial_order(
     output_dir: Path,
     model: str | None,
     reference_grounding_report: dict[str, Any] | None = None,
+    layout_template_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     artifact_report = (reference_grounding_report or {}).get("artifact_report") if isinstance(reference_grounding_report, dict) else {}
     image_path = Path(str(artifact_report.get("overlay_image") or flux_image)) if isinstance(artifact_report, dict) else flux_image
     return run_codex_reference_json_agent(
         "reference_spatial_order",
-        build_reference_spatial_order_prompt(scene_prompt, scene_graph, reference_grounding_report),
+        build_reference_spatial_order_prompt(
+            scene_prompt,
+            scene_graph,
+            reference_grounding_report,
+            layout_template_context,
+        ),
         image_path,
         output_dir,
         model,
     )
+
+
+def _layout_template_json(path: Path) -> tuple[dict[str, Any], str | None]:
+    if not path.exists():
+        return {}, None
+    try:
+        data = extract_json(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {}, f"{path}: {type(exc).__name__}: {exc}"
+    if not isinstance(data, dict):
+        return {}, f"{path}: expected JSON object"
+    return data, None
+
+
+def _layout_template_tokens(raw: Any) -> set[str]:
+    text = str(raw or "").lower()
+    return {token for token in re.split(r"[^a-z0-9]+", text) if token}
+
+
+def _scene_graph_template_tokens(scene_graph: dict[str, Any]) -> set[str]:
+    tokens: set[str] = set()
+    for key in ("room_type", "style", "scene_id", "description"):
+        tokens.update(_layout_template_tokens(scene_graph.get(key)))
+    objects = scene_graph.get("objects")
+    if isinstance(objects, list):
+        for obj in objects:
+            if not isinstance(obj, dict):
+                continue
+            for key in ("id", "category", "type", "label", "description", "name"):
+                tokens.update(_layout_template_tokens(obj.get(key)))
+    return tokens
+
+
+def _layout_template_match_report(manifest: dict[str, Any], scene_graph: dict[str, Any]) -> dict[str, Any]:
+    scene_tokens = _scene_graph_template_tokens(scene_graph)
+    required = manifest.get("required_categories") or []
+    if not isinstance(required, list):
+        required = []
+    matched: list[str] = []
+    missing: list[str] = []
+    for raw_category in required:
+        category = str(raw_category or "").strip()
+        if not category:
+            continue
+        category_tokens = _layout_template_tokens(category)
+        if category_tokens and category_tokens.intersection(scene_tokens):
+            matched.append(category)
+        else:
+            missing.append(category)
+    room_types = manifest.get("scene_types") or manifest.get("room_types") or []
+    if not isinstance(room_types, list):
+        room_types = [room_types]
+    room_match = False
+    for raw_room_type in room_types:
+        room_tokens = _layout_template_tokens(raw_room_type)
+        if room_tokens and room_tokens.intersection(scene_tokens):
+            room_match = True
+            break
+    required_score = (len(matched) / len(required)) if required else 1.0
+    score = required_score
+    if room_types:
+        score = (score * 0.8) + (0.2 if room_match else 0.0)
+    return {
+        "score": round(float(score), 3),
+        "room_match": bool(room_match),
+        "matched_required_categories": matched,
+        "missing_required_categories": missing,
+        "active": bool(score >= 0.35 or manifest.get("force_active")),
+    }
+
+
+def _layout_template_load_items(template_dir: Path, filename: str, key: str) -> tuple[list[dict[str, Any]], str | None]:
+    data, warning = _layout_template_json(template_dir / filename)
+    if warning:
+        return [], warning
+    raw_items = data.get(key) if data else []
+    if raw_items is None:
+        raw_items = []
+    if not isinstance(raw_items, list):
+        return [], f"{template_dir / filename}: expected list at {key}"
+    return [item for item in raw_items if isinstance(item, dict)], None
+
+
+def load_layout_template_context(
+    template_dirs: Iterable[Path] | None,
+    scene_graph: dict[str, Any],
+) -> dict[str, Any]:
+    _ = template_dirs, scene_graph
+    return {
+        "schema": "tree_sage_layout_template_context_v1",
+        "enabled": False,
+        "reason": "layout_template_module_removed",
+        "template_count": 0,
+        "active_template_count": 0,
+        "templates": [],
+        "warnings": [],
+    }
+
+
+def _layout_template_item_applies_to_stage(item: dict[str, Any], stage: str) -> bool:
+    raw_stages = item.get("stages", item.get("stage"))
+    if raw_stages in (None, "", []):
+        return True
+    if isinstance(raw_stages, str):
+        stages = {raw_stages}
+    elif isinstance(raw_stages, list):
+        stages = {str(value) for value in raw_stages}
+    else:
+        stages = {str(raw_stages)}
+    aliases = {
+        "reference": "reference_spatial_order",
+        "coarse": "reference_spatial_order",
+        "fine": "fine_spatial_order_detailed",
+        "detailed": "fine_spatial_order_detailed",
+        "third_stage": "fine_spatial_order_detailed",
+    }
+    normalized = {aliases.get(value, value) for value in stages}
+    return stage in normalized
+
+
+def _layout_template_item_text(item: dict[str, Any]) -> str:
+    for key in ("instruction", "check", "pattern", "policy", "note", "description"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return json.dumps(item, ensure_ascii=False, separators=(",", ":"))
+
+
+def format_layout_template_prompt_context(
+    layout_template_context: dict[str, Any] | None,
+    stage: str,
+    max_items: int = 12,
+) -> str:
+    _ = layout_template_context, stage, max_items
+    return ""
 
 
 def _compact_bedside_tabletop_graph(scene_graph: dict[str, Any]) -> dict[str, Any]:
@@ -7507,13 +7821,19 @@ def _shared_functional_cluster(
     return None
 
 
-def _is_desk_chair_tuck_pair(a: dict[str, Any], b: dict[str, Any]) -> bool:
+def _desk_chair_tuck_members(a: dict[str, Any], b: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]] | None:
     if _is_table_anchor_object(a) and _is_seating_object(b):
-        table, chair = a, b
+        return a, b
     elif _is_table_anchor_object(b) and _is_seating_object(a):
-        table, chair = b, a
-    else:
+        return b, a
+    return None
+
+
+def _is_desk_chair_tuck_pair(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    members = _desk_chair_tuck_members(a, b)
+    if not members:
         return False
+    table, chair = members
     shared = _shared_functional_cluster(table, chair, {"desk_workstation", "table_seating_cluster"})
     if shared:
         _cluster_id, table_role, chair_role = shared
@@ -7522,6 +7842,23 @@ def _is_desk_chair_tuck_pair(a: dict[str, Any], b: dict[str, Any]) -> bool:
             return True
     chair_constraints = _semantic_pose_constraints(chair)
     return str(chair_constraints.get("facing_target") or "") == str(table.get("id") or "")
+
+
+def _is_valid_desk_chair_tuck_collision_exemption(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    members = _desk_chair_tuck_members(a, b)
+    if not members or not _is_desk_chair_tuck_pair(a, b):
+        return False
+    table, chair = members
+    table_min, table_max = _bbox_for_object(table)
+    chair_min, chair_max = _bbox_for_object(chair)
+    overlap_x = min(table_max[0], chair_max[0]) - max(table_min[0], chair_min[0])
+    overlap_y = min(table_max[1], chair_max[1]) - max(table_min[1], chair_min[1])
+    if overlap_x <= COLLISION_AXIS_EPSILON or overlap_y <= COLLISION_AXIS_EPSILON:
+        return True
+    shallow_overlap = min(float(overlap_x), float(overlap_y))
+    chair_short_span = min(_axis_extent(chair, "x"), _axis_extent(chair, "y"))
+    max_allowed_overlap = max(0.22, min(0.38, chair_short_span * 0.72))
+    return shallow_overlap <= max_allowed_overlap + COLLISION_AXIS_EPSILON
 
 
 def _scene_graph_relation_exists(scene_graph: dict[str, Any], subject: str, rel_type: str, target: str) -> bool:
@@ -8743,7 +9080,7 @@ def sanitize_scene_graph_for_flow2_rerun(
                 continue
             rel_id = str(rel.get("id") or "")
             rel_type = _normalize_spatial_relation_type(rel.get("type"))
-            generated_spatial = rel_id.startswith("agent_spatial_order_") and rel_type in SPATIAL_ORDER_RELATIONS
+            generated_spatial = rel_id.startswith("agent_spatial_order_") and rel_type in REFERENCE_ORDER_RELATIONS
             generated_reference = rel_id.startswith(
                 (
                     "bbox_reference_order_",
@@ -8886,6 +9223,28 @@ def strip_generated_scene_graph_metadata(
                 if key in semantics:
                     removed_object_fields += 1
                     semantics.pop(key, None)
+    removed_relations: list[dict[str, Any]] = []
+    relations = graph.get("relations")
+    if isinstance(relations, list):
+        kept_relations: list[dict[str, Any]] = []
+        for rel in relations:
+            if not isinstance(rel, dict):
+                continue
+            rel_id = str(rel.get("id") or "")
+            rel_type = _normalize_spatial_relation_type(rel.get("type") or rel.get("relation") or rel.get("predicate"))
+            generated_spatial = rel_id.startswith("agent_spatial_order_") and rel_type in REFERENCE_ORDER_RELATIONS
+            generated_reference = rel_id.startswith(
+                (
+                    "bbox_reference_order_",
+                    "reference_consistency_",
+                    "wall_affinity_arbiter_",
+                )
+            )
+            if generated_spatial or generated_reference:
+                removed_relations.append(rel)
+            else:
+                kept_relations.append(rel)
+        graph["relations"] = kept_relations
     return graph, {
         "schema": "tree_sage_scene_graph_input_sanitize_v1",
         "enabled": True,
@@ -8893,6 +9252,8 @@ def strip_generated_scene_graph_metadata(
         "removed_top_level_keys": removed_top_level,
         "removed_top_level_key_count": len(removed_top_level),
         "removed_object_field_count": removed_object_fields,
+        "removed_relation_count": len(removed_relations),
+        "removed_relation_ids": [rel.get("id") for rel in removed_relations[:80]],
         "ok": True,
     }
 
@@ -10625,7 +10986,10 @@ def _apply_spatial_constraints(plan: dict[str, Any], scene_graph: dict[str, Any]
             if str(a.get("placement_type", "floor")) == "floor":
                 wall_id = _wall_id(rel.get("object"))
                 if _is_back_to_wall_directional_object(a):
+                    x, y, _z, _yaw = _floor_against_wall_pose(wall_id, room, wall_ref)
+                    a["x"], a["y"], a["z"] = x, y, 0.0
                     _set_effective_yaw(a, _wall_semantic_yaw(wall_id))
+                    _clamp_floor_object_against_wall(a, room, wall_id)
                     continue
                 x, y, _z, yaw = _floor_against_wall_pose(wall_id, room, wall_ref)
                 a["x"], a["y"], a["z"], a["yaw"] = x, y, 0.0, yaw
@@ -11411,15 +11775,12 @@ def _wall_footprint_offset(wall_id: str) -> float:
 
 def _wall_footprint_offset_for_object(wall_id: str, obj: dict[str, Any]) -> float:
     text = _object_identity_text(obj)
+    if _is_wall_door_object(obj):
+        return _wall_footprint_offset(wall_id)
     front_axis = None
     canonical = obj.get("asset_canonical_front") if isinstance(obj.get("asset_canonical_front"), dict) else {}
     if canonical:
         front_axis = canonical.get("axis") or canonical.get("raw_axis")
-    if not front_axis and any(keyword in text for keyword in ("door", "closet", "wardrobe")):
-        # Trellis2 wall-door assets usually import in Blender with +Y as the clean door face.
-        # The low-level mesh extents can disagree with Blender node transforms, so keep this
-        # as a semantic front-side rule rather than an axis-repair rule.
-        front_axis = "+y"
     front_axis_offset = _front_axis_to_offset(front_axis)
     if front_axis_offset is not None:
         return _round_yaw_90(-float(front_axis_offset))
@@ -11469,7 +11830,39 @@ def _is_floor_grounded_wall_door(obj: dict[str, Any]) -> bool:
     return any(keyword in text for keyword in ("door", "closet", "wardrobe"))
 
 
+def _wall_door_min_tangent_width(obj: dict[str, Any]) -> float:
+    text = _object_identity_text(obj)
+    if any(keyword in text for keyword in ("double", "closet", "sliding", "french")):
+        return 1.18
+    return 0.92
+
+
+def _apply_wall_door_dimension_prior(obj: dict[str, Any]) -> bool:
+    if not _is_wall_door_object(obj):
+        return False
+    dims = obj.get("dimensions") if isinstance(obj.get("dimensions"), dict) else {}
+    if not dims:
+        return False
+    old = (
+        _safe_float(dims.get("width"), 0.0),
+        _safe_float(dims.get("length"), 0.0),
+        _safe_float(dims.get("height"), 0.0),
+    )
+    dims["width"] = max(old[0], _wall_door_min_tangent_width(obj))
+    dims["length"] = min(max(old[1], 0.035), 0.08)
+    dims["height"] = max(old[2], 1.92)
+    obj["dimensions"] = dims
+    new = (
+        _safe_float(dims.get("width"), 0.0),
+        _safe_float(dims.get("length"), 0.0),
+        _safe_float(dims.get("height"), 0.0),
+    )
+    return any(abs(a - b) > 1e-4 for a, b in zip(old, new))
+
+
 def _clamp_wall_attached_object(obj: dict[str, Any], room: dict[str, float], wall_id: str) -> None:
+    if _is_wall_door_object(obj):
+        _apply_wall_door_dimension_prior(obj)
     width, length = _rotated_footprint(obj)
     margin = -WALL_ATTACHMENT_OVERLAP
     if wall_id == "wall_east":
@@ -11602,12 +11995,18 @@ def _apply_agent_pose_constraints(obj: dict[str, Any], objects: dict[str, dict[s
             fixes.append(f"yaw aimed at {facing_target} from pose agent")
 
     wall_id = str(constraints.get("wall_id") or "")
-    if expected_pose == "wall_flush" and wall_id in VIRTUAL_WALLS and not _is_floor_wall_against_candidate(obj):
+    if expected_pose == "wall_flush" and wall_id in VIRTUAL_WALLS and (
+        not _is_floor_wall_against_candidate(obj) or _is_wall_door_object(obj)
+    ):
         obj["placement_type"] = "attached_to_wall"
         obj["support_id"] = wall_id
         obj["yaw"] = _wall_semantic_yaw(wall_id)
         obj["footprint_yaw_offset_degrees"] = _wall_footprint_offset_for_object(wall_id, obj)
+        if _is_wall_flat_visual_asset(obj):
+            _set_wall_flat_visual_yaw(obj, wall_id)
         obj["dimensions"]["length"] = min(float(obj["dimensions"]["length"]), 0.08)
+        if _apply_wall_door_dimension_prior(obj):
+            fixes.append("wall-door tangent width and floor-panel dimensions protected from pose agent")
         _clamp_wall_attached_object(obj, room, wall_id)
         fixes.append(f"wall-flush pose applied on {wall_id} from pose agent")
     return fixes
@@ -11845,6 +12244,126 @@ def _asset_quality_warnings(obj: dict[str, Any], target_components: list[dict[st
     return warnings
 
 
+def _expects_light_neutral_wall_door_asset(obj: dict[str, Any]) -> bool:
+    if not _is_wall_door_object(obj):
+        return False
+    if not (
+        _is_wall_attached_object(obj)
+        or str(obj.get("placement_type") or "") == "attached_to_wall"
+        or str(obj.get("support_id") or "").startswith("wall_")
+    ):
+        return False
+    text = (
+        f"{obj.get('id', '')} {obj.get('category', '')} {obj.get('description', '')} "
+        f"{obj.get('asset_prompt', '')}"
+    ).lower().replace("_", " ")
+    if any(keyword in text for keyword in ("wood", "wooden", "oak", "walnut", "mahogany", "brown", "wardrobe", "cabinet")):
+        return False
+    return any(
+        keyword in text
+        for keyword in (
+            "white",
+            "cream",
+            "ivory",
+            "painted",
+            "closet door",
+            "double closet",
+            "paneled door",
+            "panelled door",
+            "door",
+        )
+    )
+
+
+def _asset_base_color_texture_arrays(asset_path: Path) -> list[np.ndarray]:
+    try:
+        loaded = trimesh.load(asset_path, force="scene")
+    except Exception:
+        return []
+    geometries = loaded.geometry.values() if isinstance(loaded, trimesh.Scene) else [loaded]
+    arrays: list[np.ndarray] = []
+    for geom in geometries:
+        material = getattr(getattr(geom, "visual", None), "material", None)
+        texture = getattr(material, "baseColorTexture", None) or getattr(material, "image", None)
+        if texture is None:
+            continue
+        try:
+            image = texture if isinstance(texture, Image.Image) else Image.fromarray(np.asarray(texture))
+            arrays.append(np.asarray(image.convert("RGBA"), dtype=np.float32))
+        except Exception:
+            continue
+    return arrays
+
+
+def _light_neutral_door_texture_qa(obj: dict[str, Any], asset_path: Path) -> dict[str, Any] | None:
+    if not _expects_light_neutral_wall_door_asset(obj):
+        return None
+    arrays = _asset_base_color_texture_arrays(asset_path)
+    report: dict[str, Any] = {
+        "expected": "light_neutral_wall_door",
+        "texture_count": len(arrays),
+        "ok": True,
+        "warnings": [],
+    }
+    if not arrays:
+        report["reason"] = "no_base_color_texture"
+        return report
+    pixels: list[np.ndarray] = []
+    for arr in arrays:
+        if arr.ndim != 3 or arr.shape[2] < 4:
+            continue
+        rgb = arr[:, :, :3]
+        alpha = arr[:, :, 3]
+        mx = np.max(rgb, axis=2)
+        mn = np.min(rgb, axis=2)
+        saturation = mx - mn
+        mask = (alpha > 128.0) & (mx > 145.0) & (saturation < 130.0)
+        selected = rgb[mask]
+        if selected.size:
+            pixels.append(selected.reshape(-1, 3))
+    if not pixels:
+        report.update(
+            {
+                "ok": False,
+                "paint_pixel_count": 0,
+                "warnings": ["door asset has no readable light neutral paint texture pixels"],
+            }
+        )
+        return report
+    sample = np.concatenate(pixels, axis=0)
+    if sample.shape[0] > 250000:
+        stride = max(1, int(math.ceil(sample.shape[0] / 250000)))
+        sample = sample[::stride]
+    mean_rgb = np.mean(sample, axis=0)
+    median_rgb = np.median(sample, axis=0)
+    max_channel_delta = float(np.max(mean_rgb) - np.min(mean_rgb))
+    red_warm_delta = float(mean_rgb[0] - min(mean_rgb[1], mean_rgb[2]))
+    median_value = float(np.mean(median_rgb))
+    report.update(
+        {
+            "paint_pixel_count": int(sample.shape[0]),
+            "mean_rgb": _np_round(mean_rgb, 3),
+            "median_rgb": _np_round(median_rgb, 3),
+            "median_value": round(median_value, 3),
+            "max_channel_delta": round(max_channel_delta, 3),
+            "red_warm_delta": round(red_warm_delta, 3),
+        }
+    )
+    warnings: list[str] = []
+    if sample.shape[0] < 2048:
+        warnings.append(f"door asset has too few readable light neutral paint pixels ({sample.shape[0]})")
+    if median_value < 155.0 or max_channel_delta > 58.0 or red_warm_delta > 52.0:
+        warnings.append(
+            "door asset paint color drift: expected light neutral/white paint but "
+            f"median_rgb={report['median_rgb']} mean_rgb={report['mean_rgb']} "
+            f"max_channel_delta={report['max_channel_delta']} red_warm_delta={report['red_warm_delta']}"
+        )
+    if warnings:
+        report["ok"] = False
+        report["warnings"] = warnings
+    return report
+
+
 def analyze_asset_pose_and_surfaces(obj: dict[str, Any], asset_path: Path) -> dict[str, Any]:
     entry: dict[str, Any] = {
         "id": obj["id"],
@@ -11910,6 +12429,10 @@ def analyze_asset_pose_and_surfaces(obj: dict[str, Any], asset_path: Path) -> di
             if scale_ratio < 0.12:
                 entry["warnings"].append("wall-attached asset requires extreme axis compression; consider regenerating as a flat wall-mounted asset")
         entry["warnings"].extend(_asset_quality_warnings(obj, target_components))
+        door_texture_qa = _light_neutral_door_texture_qa(obj, asset_path)
+        if door_texture_qa is not None:
+            entry["door_texture_qa"] = door_texture_qa
+            entry["warnings"].extend(str(warning) for warning in door_texture_qa.get("warnings", []))
         if entry["warnings"]:
             entry["quality"] = "review"
     except Exception as exc:
@@ -12101,6 +12624,225 @@ def repair_wall_asset_axes_from_registry(
     return report
 
 
+def _axis_candidate_extents(asset_path: Path, obj: dict[str, Any], axis_to_z: int, yaw: float) -> np.ndarray | None:
+    probe = dict(obj)
+    probe["asset_axis_to_z"] = int(axis_to_z)
+    if int(axis_to_z) == 2:
+        probe.pop("asset_axis_to_z_sign", None)
+    else:
+        probe["asset_axis_to_z_sign"] = 1.0
+    probe["asset_local_yaw_offset_degrees"] = float(yaw)
+    try:
+        geoms = _load_oriented_asset_geometries(asset_path, probe)
+        bounds = _geometry_list_bounds(geoms)
+        extents = np.maximum(bounds[1] - bounds[0], 1e-6)
+    except Exception:
+        return None
+    if extents.shape != (3,) or not np.all(np.isfinite(extents)):
+        return None
+    return extents
+
+
+def _asset_axis_to_z_value(obj: dict[str, Any]) -> int:
+    try:
+        axis = int(obj.get("asset_axis_to_z", 2))
+    except (TypeError, ValueError):
+        return 2
+    return axis if axis in (0, 1, 2) else 2
+
+
+def _curtain_semantic_axis_candidate(obj: dict[str, Any], registry_entry: dict[str, Any]) -> dict[str, Any] | None:
+    asset_path_text = registry_entry.get("asset_path")
+    if not asset_path_text:
+        return None
+    asset_path = Path(str(asset_path_text))
+    if not asset_path.exists():
+        return None
+    dims = obj.get("dimensions") if isinstance(obj.get("dimensions"), dict) else {}
+    target = np.array(
+        [
+            _safe_float(dims.get("width"), 0.7),
+            _safe_float(dims.get("length"), WINDOW_CURTAIN_CLUSTER_PANEL_THICKNESS),
+            _safe_float(dims.get("height"), 1.8),
+        ],
+        dtype=float,
+    )
+    if not np.all(np.isfinite(target)) or np.any(target <= 0.0):
+        return None
+
+    current_axis = _asset_axis_to_z_value(obj)
+    current_yaw = _round_yaw_90(float(obj.get("asset_local_yaw_offset_degrees", 0.0) or 0.0))
+    if current_axis == 2:
+        source = str(registry_entry.get("source") or registry_entry.get("metadata_source") or "").lower()
+        content_type = str(registry_entry.get("content_type") or registry_entry.get("asset_content_type") or "").lower()
+        if source.startswith("trellis2") or "gltf" in content_type:
+            return None
+
+    candidates: list[dict[str, Any]] = []
+    for axis_to_z in (0, 1, 2):
+        for yaw in (0.0, 90.0, 180.0, 270.0):
+            extents = _axis_candidate_extents(asset_path, obj, axis_to_z, yaw)
+            if extents is None:
+                continue
+            scale = target / np.maximum(extents, 1e-6)
+            scale_ratio = float(np.max(scale) / max(float(np.min(scale)), 1e-6))
+            # Curtain panels should be normalized before Blender scaling as:
+            # local X = wall-tangent panel width, local Y = thin wall-normal
+            # depth, local Z = hanging height. This keeps paired panels visually
+            # symmetric after the fixture solver assigns equal scene spans.
+            semantic_penalty = 0.0
+            semantic_penalty += max(0.0, float(extents[0] - extents[2])) * 8.0
+            semantic_penalty += max(0.0, float(extents[1] - extents[0])) * 8.0
+            semantic_penalty += max(0.0, float(extents[1] - extents[2])) * 8.0
+            thin_ratio = float(extents[1] / max(float(extents[0]), float(extents[2]), 1e-6))
+            semantic_penalty += max(0.0, thin_ratio - 0.38) * 6.0
+            score = semantic_penalty + math.log(max(scale_ratio, 1.0))
+            candidates.append(
+                {
+                    "asset_axis_to_z": int(axis_to_z),
+                    "asset_local_yaw_offset_degrees": float(yaw),
+                    "oriented_extents": _np_round(extents),
+                    "target_scale": _np_round(scale),
+                    "scale_ratio": round(float(scale_ratio), 6),
+                    "semantic_penalty": round(float(semantic_penalty), 6),
+                    "score": round(float(score), 6),
+                }
+            )
+    if not candidates:
+        return None
+    current = min(
+        (
+            candidate
+            for candidate in candidates
+            if int(candidate["asset_axis_to_z"]) == current_axis
+            and _round_yaw_90(float(candidate["asset_local_yaw_offset_degrees"])) == current_yaw
+        ),
+        key=lambda item: float(item["score"]),
+        default=None,
+    )
+    best = min(candidates, key=lambda item: float(item["score"]))
+    if current is None:
+        current = best
+    if (
+        int(best["asset_axis_to_z"]) == current_axis
+        and _round_yaw_90(float(best["asset_local_yaw_offset_degrees"])) == current_yaw
+    ):
+        return None
+    improvement = float(current["score"]) - float(best["score"])
+    current_extents = np.asarray(current.get("oriented_extents", []), dtype=float)
+    current_is_bad = (
+        current_extents.shape == (3,)
+        and (
+            float(current_extents[2]) < max(float(current_extents[0]), float(current_extents[1])) * 0.75
+            or float(current_extents[1]) > float(current_extents[0]) * 0.75
+        )
+    )
+    if improvement < 0.35 and not current_is_bad:
+        return None
+    result = dict(best)
+    result["old_asset_axis_to_z"] = current_axis
+    result["old_asset_local_yaw_offset_degrees"] = current_yaw
+    result["old_candidate"] = current
+    result["score_improvement"] = round(float(improvement), 6)
+    result["reason"] = "curtain panel semantic axes normalized to local X=width, local Y=thin depth, local Z=height"
+    return result
+
+
+def normalize_curtain_asset_axes_from_registry(
+    plan: dict[str, Any],
+    asset_registry: dict[str, Any],
+    *,
+    stage: str,
+) -> dict[str, Any]:
+    report: dict[str, Any] = {
+        "schema": "tree_sage_curtain_asset_axis_normalization_v1",
+        "enabled": True,
+        "stage": stage,
+        "fixes": [],
+        "checks": [],
+        "fix_count": 0,
+        "ok": True,
+    }
+    registry_objects = asset_registry.get("objects", {}) if isinstance(asset_registry.get("objects"), dict) else {}
+    for obj in plan.get("objects", []):
+        if not isinstance(obj, dict) or not obj.get("id") or not _is_curtain_panel_object(obj):
+            continue
+        entry = registry_objects.get(str(obj["id"]), {})
+        if not isinstance(entry, dict) or not entry.get("exists", False):
+            continue
+        candidate = _curtain_semantic_axis_candidate(obj, entry)
+        check = {
+            "id": obj["id"],
+            "category": obj.get("category", ""),
+            "current_asset_axis_to_z": _asset_axis_to_z_value(obj),
+            "current_asset_local_yaw_offset_degrees": _round_yaw_90(
+                float(obj.get("asset_local_yaw_offset_degrees", 0.0) or 0.0)
+            ),
+            "registry_local_footprint_long_axis": entry.get("local_footprint_long_axis"),
+            "registry_local_thin_axis": entry.get("local_thin_axis"),
+            "registry_oriented_local_bounds": entry.get("oriented_local_bounds"),
+        }
+        if not candidate:
+            check["status"] = "kept"
+            report["checks"].append(check)
+            continue
+        old_pose = {
+            "asset_axis_to_z": _asset_axis_to_z_value(obj),
+            "asset_axis_to_z_sign": obj.get("asset_axis_to_z_sign"),
+            "asset_local_yaw_offset_degrees": float(obj.get("asset_local_yaw_offset_degrees", 0.0) or 0.0),
+        }
+        obj["asset_axis_to_z"] = int(candidate["asset_axis_to_z"])
+        if int(candidate["asset_axis_to_z"]) == 2:
+            obj.pop("asset_axis_to_z_sign", None)
+        else:
+            obj["asset_axis_to_z_sign"] = 1.0
+        obj["asset_local_yaw_offset_degrees"] = float(candidate["asset_local_yaw_offset_degrees"])
+        new_pose = {
+            "asset_axis_to_z": _asset_axis_to_z_value(obj),
+            "asset_axis_to_z_sign": obj.get("asset_axis_to_z_sign"),
+            "asset_local_yaw_offset_degrees": float(obj.get("asset_local_yaw_offset_degrees", 0.0) or 0.0),
+        }
+        fix = {
+            **check,
+            "status": "fixed",
+            "old_pose": old_pose,
+            "new_pose": new_pose,
+            "candidate": candidate,
+        }
+        report["fixes"].append(fix)
+        report["checks"].append(fix)
+    report["fix_count"] = len(report["fixes"])
+    return report
+
+
+def merge_curtain_asset_axis_normalization_reports(
+    primary: dict[str, Any],
+    extra: dict[str, Any],
+) -> dict[str, Any]:
+    if not extra:
+        return primary
+    if not primary or not primary.get("enabled"):
+        primary = {
+            "schema": "tree_sage_curtain_asset_axis_normalization_v1",
+            "enabled": True,
+            "stages": [],
+            "fixes": [],
+            "checks": [],
+            "warnings": [],
+            "fix_count": 0,
+            "ok": True,
+        }
+    primary.setdefault("stages", [])
+    if extra.get("stage"):
+        primary["stages"].append(extra.get("stage"))
+    primary.setdefault("fixes", []).extend(extra.get("fixes", []))
+    primary.setdefault("checks", []).extend(extra.get("checks", []))
+    primary.setdefault("warnings", []).extend(extra.get("warnings", []))
+    primary["fix_count"] = len(primary.get("fixes", []))
+    primary["ok"] = bool(primary.get("ok", True)) and bool(extra.get("ok", True))
+    return primary
+
+
 def _raw_asset_horizontal_extents(asset_path: Path, obj: dict[str, Any]) -> np.ndarray | None:
     if not asset_path.exists():
         return None
@@ -12245,6 +12987,7 @@ def repair_back_to_wall_asset_local_yaw(
             continue
         raw_local_wide_axis = "x" if float(raw_horizontal[0]) >= float(raw_horizontal[1]) else "y"
         raw_wide_axis_yaw = 0.0 if raw_local_wide_axis == "x" else 90.0
+        current_local_yaw = _round_yaw_90(float(obj.get("asset_local_yaw_offset_degrees", 0.0) or 0.0))
         render_yaw = _footprint_yaw(obj)
         desired_front_yaw = _wall_semantic_yaw(wall_id)
         desired_back_yaw = _wall_back_contact_yaw(wall_id)
@@ -12296,6 +13039,16 @@ def repair_back_to_wall_asset_local_yaw(
                 # front is more reliable for fixing head/foot reversal.
                 desired_local_yaw = canonical_local_yaw
                 alignment_reason = "high_confidence_bed_canonical_front_overrides_raw_wide_axis"
+        canonical_front_locked = (
+            canonical_probe is not None
+            and canonical_confidence >= 0.80
+            and alignment_reason
+            in {
+                "canonical_front_preserving_width_tangent_axis",
+                "bed_mesh_local_canonical_front_normalization",
+                "high_confidence_bed_canonical_front_overrides_raw_wide_axis",
+            }
+        )
         if headboard_probe:
             headboard_confidence = float(headboard_probe.get("confidence", 0.0) or 0.0)
             headboard_local_yaw = _round_yaw_90(
@@ -12310,8 +13063,25 @@ def repair_back_to_wall_asset_local_yaw(
                 desired_local_yaw = headboard_local_yaw
                 alignment_reason = "geometry_detected_headboard_end_preserving_width_tangent_axis"
             elif headboard_confidence >= 0.28:
-                desired_local_yaw = headboard_local_yaw
-                alignment_reason = "high_confidence_geometry_detected_headboard_end"
+                if canonical_front_locked:
+                    headboard_probe["rejected_reason"] = (
+                        "kept_high_confidence_canonical_front_because_geometry_candidate_would_swap_wall_tangent_width_axis"
+                    )
+                    report["warnings"].append(
+                        f"{obj['id']}: rejected non-tangent headboard geometry yaw candidate in favor of high-confidence canonical front"
+                    )
+                elif _is_bed_object(obj) and not preserves_tangent_axis:
+                    headboard_probe["rejected_reason"] = (
+                        "kept_current_bed_asset_local_yaw_because_geometry_candidate_would_swap_wall_tangent_width_axis"
+                    )
+                    desired_local_yaw = current_local_yaw
+                    alignment_reason = "rejected_non_tangent_headboard_geometry_candidate_for_bed"
+                    report["warnings"].append(
+                        f"{obj['id']}: rejected non-tangent headboard geometry yaw candidate; preserved current bed asset yaw"
+                    )
+                else:
+                    desired_local_yaw = headboard_local_yaw
+                    alignment_reason = "high_confidence_geometry_detected_headboard_end"
             headboard_probe["candidate_asset_local_yaw_offset_degrees"] = headboard_local_yaw
             headboard_probe["candidate_preserves_width_tangent_axis"] = preserves_tangent_axis
         check = {
@@ -12331,7 +13101,6 @@ def repair_back_to_wall_asset_local_yaw(
             "fallback_axis_asset_local_yaw_offset_degrees": fallback_local_yaw,
             "current_asset_local_yaw_offset_degrees": float(obj.get("asset_local_yaw_offset_degrees", 0.0) or 0.0),
         }
-        current_local_yaw = _round_yaw_90(float(obj.get("asset_local_yaw_offset_degrees", 0.0) or 0.0))
         if (
             current_local_yaw == desired_local_yaw
             and alignment_reason == "fallback_wide_axis_tangent_to_wall"
@@ -12340,7 +13109,10 @@ def repair_back_to_wall_asset_local_yaw(
             report["checks"].append(check)
             continue
         if current_local_yaw == desired_local_yaw:
-            check["status"] = "already_headboard_aligned" if alignment_reason != "fallback_wide_axis_tangent_to_wall" else "already_wide_axis_tangent"
+            if alignment_reason == "rejected_non_tangent_headboard_geometry_candidate_for_bed":
+                check["status"] = "kept_current_yaw_rejected_non_tangent_headboard_candidate"
+            else:
+                check["status"] = "already_headboard_aligned" if alignment_reason != "fallback_wide_axis_tangent_to_wall" else "already_wide_axis_tangent"
             report["checks"].append(check)
             continue
         old_pose = _plan_object_snapshot(obj)
@@ -12415,6 +13187,191 @@ def build_asset_registry(plan: dict[str, Any], asset_dir: Path) -> dict[str, Any
         "component_policy_failed_ids": sorted(set(component_policy_failed_ids)),
         "ok": not any(entry.get("quality") in {"missing", "error"} for entry in objects.values()),
     }
+
+
+def _retarget_cached_asset_registry_entry(obj: dict[str, Any], cached_entry: dict[str, Any], asset_path: Path) -> dict[str, Any]:
+    entry = deepcopy(cached_entry)
+    entry["id"] = obj["id"]
+    entry["category"] = obj.get("category", "")
+    entry["asset_path"] = str(asset_path)
+    entry["exists"] = asset_path.exists()
+    entry["asset_axis_to_z"] = int(obj.get("asset_axis_to_z", entry.get("asset_axis_to_z", 2)) or 2)
+    entry["front_yaw_offset_degrees"] = float(
+        obj.get("front_yaw_offset_degrees", entry.get("front_yaw_offset_degrees", 0.0)) or 0.0
+    )
+    entry["footprint_yaw_offset_degrees"] = float(
+        obj.get("footprint_yaw_offset_degrees", entry.get("footprint_yaw_offset_degrees", 0.0)) or 0.0
+    )
+    entry["effective_yaw"] = _effective_yaw(obj)
+    target_dimensions = {key: float(value) for key, value in obj["dimensions"].items()}
+    entry["target_dimensions"] = target_dimensions
+    if not asset_path.exists():
+        entry["quality"] = "missing"
+        entry["warnings"] = ["missing GLB asset"]
+        return entry
+
+    bounds = entry.get("oriented_local_bounds") if isinstance(entry.get("oriented_local_bounds"), dict) else {}
+    bounds_min = np.array(bounds.get("min", [0.0, 0.0, 0.0]), dtype=float)
+    bounds_max = np.array(bounds.get("max", [1.0, 1.0, 1.0]), dtype=float)
+    extents = np.maximum(bounds_max - bounds_min, 1e-6)
+    target = np.array(
+        [
+            target_dimensions["width"],
+            target_dimensions["length"],
+            target_dimensions["height"],
+        ],
+        dtype=float,
+    )
+    cached_target_dimensions = cached_entry.get("target_dimensions") if isinstance(cached_entry.get("target_dimensions"), dict) else {}
+    old_target = np.array(
+        [
+            float(cached_target_dimensions.get("width", target[0]) or target[0]),
+            float(cached_target_dimensions.get("length", target[1]) or target[1]),
+            float(cached_target_dimensions.get("height", target[2]) or target[2]),
+        ],
+        dtype=float,
+    )
+    retarget_ratio = target / np.maximum(old_target, 1e-6)
+    target_components: list[dict[str, Any]] = []
+    for raw_component in entry.get("largest_components", []) or []:
+        if not isinstance(raw_component, dict):
+            continue
+        component = deepcopy(raw_component)
+        raw_bounds = component.get("bounds") if isinstance(component.get("bounds"), dict) else {}
+        comp_min = np.array(raw_bounds.get("min", [0.0, 0.0, 0.0]), dtype=float) * retarget_ratio
+        comp_max = np.array(raw_bounds.get("max", [0.0, 0.0, 0.0]), dtype=float) * retarget_ratio
+        comp_center = (comp_min + comp_max) / 2.0
+        comp_extents = np.maximum(comp_max - comp_min, 0.0)
+        component["bounds"] = {
+            "min": _np_round(comp_min),
+            "max": _np_round(comp_max),
+            "center": _np_round(comp_center),
+            "extents": _np_round(comp_extents),
+        }
+        component["volume_proxy"] = round(float(np.prod(comp_extents)), 6)
+        component["footprint_area"] = round(float(comp_extents[0] * comp_extents[1]), 6)
+        target_components.append(component)
+
+    footprint_extents = extents[:2]
+    local_axes = ("x", "y", "z")
+    long_axis = int(np.argmax(footprint_extents))
+    thin_axis = int(np.argmin(extents))
+    component_stats = _component_geometry_stats(target_components)
+    component_policy = _component_policy_for_asset(obj)
+    warnings = _asset_quality_warnings(obj, target_components)
+    door_texture_qa = entry.get("door_texture_qa") if isinstance(entry.get("door_texture_qa"), dict) else None
+    if door_texture_qa is not None:
+        warnings.extend(str(warning) for warning in door_texture_qa.get("warnings", []))
+    if _is_wall_attached_object(obj) and not _is_grounded_wall_against_furniture(obj) and "window" not in _category_text(obj):
+        scale_ratio = float(np.min(target / extents) / max(float(np.max(target / extents)), 1e-6))
+        if scale_ratio < 0.12:
+            warnings.append("wall-attached asset requires extreme axis compression; consider regenerating as a flat wall-mounted asset")
+
+    entry.update(
+        {
+            "quality": "review" if warnings else "ok",
+            "target_scale": _np_round(target / extents),
+            "local_footprint_long_axis": local_axes[long_axis],
+            "local_thin_axis": local_axes[thin_axis],
+            "target_footprint_long_axis": "x" if target[0] >= target[1] else "y",
+            "effective_footprint": {
+                "width": _rotated_footprint(obj)[0],
+                "length": _rotated_footprint(obj)[1],
+                "long_axis_world": "x" if _rotated_footprint(obj)[0] >= _rotated_footprint(obj)[1] else "y",
+            },
+            "component_count": len(target_components),
+            "component_analysis_modes": sorted({str(comp.get("analysis_mode", "unknown")) for comp in target_components}),
+            "component_stats": {
+                key: round(float(value), 6) if isinstance(value, float) else value
+                for key, value in component_stats.items()
+            },
+            "asset_component_policy": component_policy,
+            "largest_components": target_components[:8],
+            "warnings": warnings,
+            "reused_asset_registry_cache": True,
+            "reused_asset_registry_cache_source": cached_entry.get("asset_path"),
+        }
+    )
+    return entry
+
+
+def _load_reused_asset_registry_cache(args: argparse.Namespace, plan: dict[str, Any], asset_dir: Path) -> dict[str, Any] | None:
+    reuse_asset_dir = getattr(args, "reuse_asset_dir", None)
+    if not reuse_asset_dir:
+        return None
+    source_dir = Path(reuse_asset_dir)
+    cache_path = source_dir.parent / "asset_registry.json"
+    if not cache_path.exists():
+        return None
+    try:
+        cached_registry = extract_json(cache_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    cached_objects = cached_registry.get("objects") if isinstance(cached_registry, dict) else None
+    if not isinstance(cached_objects, dict):
+        return None
+    current_objects = [
+        obj for obj in plan.get("objects", [])
+        if isinstance(obj, dict) and obj.get("id") and isinstance(obj.get("dimensions"), dict)
+    ]
+    current_ids = {str(obj["id"]) for obj in current_objects}
+    if not current_ids or not current_ids.issubset(set(cached_objects.keys())):
+        return None
+    retargeted_objects: dict[str, Any] = {}
+    warnings: list[str] = []
+    component_policy_failed_ids: list[str] = []
+    for obj in current_objects:
+        object_id = str(obj["id"])
+        source_glb = source_dir / f"{object_id}.glb"
+        current_glb = asset_dir / f"{object_id}.glb"
+        source_meta = source_dir / f"{object_id}.json"
+        current_meta = asset_dir / f"{object_id}.json"
+        if not source_glb.exists() or not current_glb.exists():
+            return None
+        try:
+            source_meta_stat = source_meta.stat()
+            current_meta_stat = current_meta.stat()
+        except OSError:
+            return None
+        if source_meta_stat.st_size != current_meta_stat.st_size or abs(source_meta_stat.st_mtime - current_meta_stat.st_mtime) > 1e-3:
+            return None
+        cached_entry = cached_objects.get(object_id)
+        if not isinstance(cached_entry, dict) or not cached_entry.get("oriented_local_bounds"):
+            return None
+        entry = _retarget_cached_asset_registry_entry(obj, cached_entry, current_glb)
+        retargeted_objects[object_id] = entry
+        for warning in entry.get("warnings", []):
+            warnings.append(f"{object_id}: {warning}")
+            if str(warning).startswith("component policy violation:"):
+                component_policy_failed_ids.append(object_id)
+    return {
+        "schema": "tree_sage_asset_registry_v1",
+        "asset_dir": str(asset_dir),
+        "object_count": len(retargeted_objects),
+        "objects": retargeted_objects,
+        "warnings": warnings,
+        "component_policy_failed_ids": sorted(set(component_policy_failed_ids)),
+        "ok": not any(entry.get("quality") in {"missing", "error"} for entry in retargeted_objects.values()),
+        "cache": {
+            "enabled": True,
+            "source_registry": str(cache_path),
+            "source_asset_dir": str(source_dir),
+            "retargeted_to_current_plan": True,
+            "identity_check": "sidecar_metadata_size_mtime",
+        },
+    }
+
+
+def build_asset_registry_maybe_cached(plan: dict[str, Any], asset_dir: Path, args: argparse.Namespace) -> dict[str, Any]:
+    cached = _load_reused_asset_registry_cache(args, plan, asset_dir)
+    if cached is not None:
+        print(
+            f"[asset-registry] reused cached registry from {cached['cache']['source_registry']} "
+            f"for {cached.get('object_count', 0)} assets",
+            flush=True,
+        )
+        return cached
+    return build_asset_registry(plan, asset_dir)
 
 
 def _asset_source_bucket(meta: dict[str, Any]) -> str:
@@ -12965,6 +13922,33 @@ def _bed_mesh_local_front_normalization(
     }
 
 
+def _canonical_front_item_uses_nonvisual_fallback(front_report: dict[str, Any], item: dict[str, Any]) -> bool:
+    evidence = str(item.get("evidence") or "").strip().lower()
+    provenance = " ".join(
+        str(value or "").strip().lower()
+        for value in (
+            front_report.get("fallback") if isinstance(front_report, dict) else "",
+            front_report.get("reason") if isinstance(front_report, dict) else "",
+            front_report.get("error") if isinstance(front_report, dict) else "",
+            item.get("source"),
+            item.get("method"),
+            item.get("provenance"),
+            evidence,
+        )
+    )
+    return any(
+        marker in provenance
+        for marker in (
+            "local_directional_defaults",
+            "local directional defaults",
+            "asset canonical front agent failed",
+            "turntable render failed",
+            "render failed",
+            "fallback",
+        )
+    )
+
+
 def apply_asset_canonical_front_report(plan: dict[str, Any], front_report: dict[str, Any]) -> dict[str, Any]:
     objects_by_id = {str(obj.get("id")): obj for obj in plan.get("objects", []) if isinstance(obj, dict)}
     applied: list[dict[str, Any]] = []
@@ -12985,6 +13969,20 @@ def apply_asset_canonical_front_report(plan: dict[str, Any], front_report: dict[
                     "confidence": _clamp(_safe_float(item.get("confidence"), 0.0), 0.0, 1.0),
                     "reason": "protected_reused_asset_local_pose_metadata",
                     "pose_prior_source": obj.get("_reused_asset_pose_prior_source"),
+                }
+            )
+            continue
+        if _is_wall_flat_visual_asset(obj) and _canonical_front_item_uses_nonvisual_fallback(front_report, item):
+            skipped.append(
+                {
+                    "id": object_id,
+                    "canonical_front_axis": item.get("canonical_front_axis"),
+                    "confidence": _clamp(_safe_float(item.get("confidence"), 0.0), 0.0, 1.0),
+                    "reason": "protected_wall_flat_pose_from_nonvisual_canonical_front_fallback",
+                    "existing_yaw": obj.get("yaw"),
+                    "existing_front_yaw_offset_degrees": obj.get("front_yaw_offset_degrees"),
+                    "existing_footprint_yaw_offset_degrees": obj.get("footprint_yaw_offset_degrees"),
+                    "evidence": item.get("evidence"),
                 }
             )
             continue
@@ -14085,6 +15083,152 @@ def run_final_render_pose_feedback_agent(
     )
 
 
+def build_visual_comparison_critic_prompt(iteration: int | str = 1) -> str:
+    return f"""
+You are a strict visual quality critic for TreeSAGE indoor scene reconstruction.
+The attached image is a side-by-side comparison: LEFT is the reference image; RIGHT is the generated 3D render.
+
+This is critic iteration {iteration}. Compare the generated render against the reference. Judge whether the layout,
+object scale, pose/orientation, wall/floor attachment, and major visual relationships are acceptable.
+Do not propose a new scene. Do not require exact photorealism. Focus on visible spatial/layout errors that a deterministic
+pipeline could fix. If the render is genuinely close and you are confident, say there are no major issues.
+
+Pay special attention to, but do not assume errors in:
+- window + curtain cluster: relative top edges, symmetry, compactness, wall attachment
+- bed: whether scale/depth/width looks over-stretched or distorted relative to the room and nearby nightstands
+- desk/chair cluster: whether the chair is plausibly tucked at the desk without severe penetration
+- wall art, door, dresser/nightstands, ceiling light height/placement, supported tabletop items
+
+Return only JSON with this schema:
+{{
+  "schema": "tree_sage_visual_comparison_critic_v1",
+  "overall_acceptability": "accept|borderline|reject",
+  "overall_score": 0.0,
+  "confidence": 0.0,
+  "brief_verdict": "one or two sentences",
+  "major_issues": [
+    {{
+      "rank": 1,
+      "severity": "critical|major|minor",
+      "area": "short label",
+      "reference_observation": "what the left panel shows",
+      "render_observation": "what the right panel shows",
+      "why_it_matters": "why this is a real reconstruction problem",
+      "likely_pipeline_module": "scene_graph|asset_generation|pose|scale|window_curtain_solver|density_refiner|support_solver|collision_solver|camera_or_render|unknown",
+      "suggested_test_or_fix": "concrete next check or module behavior"
+    }}
+  ],
+  "minor_issues": [
+    {{
+      "area": "short label",
+      "observation": "short note",
+      "confidence": 0.0
+    }}
+  ],
+  "things_that_look_correct": ["short evidence"],
+  "candidate_gate_rules": [
+    {{
+      "name": "short_snake_case_rule",
+      "condition": "visual or measurable condition that would catch this issue",
+      "priority": "high|medium|low"
+    }}
+  ]
+}}
+""".strip()
+
+
+def run_visual_comparison_critic_agent(
+    comparison_image: Path,
+    output_dir: Path,
+    model: str | None,
+    iteration: int | str = 1,
+) -> dict[str, Any]:
+    return run_codex_reference_json_agent(
+        f"visual_comparison_critic_iter_{iteration}",
+        build_visual_comparison_critic_prompt(iteration),
+        comparison_image,
+        output_dir,
+        model,
+    )
+
+
+def build_visual_critic_repair_planner_prompt(plan: dict[str, Any], critic_report: dict[str, Any]) -> str:
+    snapshot = _compact_scene_density_plan_snapshot(plan)
+    return f"""
+You are the TreeSAGE final visual critic repair planner.
+The attached image is the same side-by-side comparison that the critic reviewed: LEFT is the reference, RIGHT is the current render.
+
+Your job is to convert the critic's natural-language issues into a bounded repair plan over the current scene objects.
+Do not invent object ids. Prefer direct fixes that correspond to the critic's specific complaints. Do not redesign the whole scene.
+If a critic issue cannot be safely expressed as one of the supported action types, put it in `unsupported_actions` with the module that needs a new solver.
+
+Current compact scene plan:
+{json.dumps(snapshot, ensure_ascii=False, indent=2)}
+
+Critic report:
+{json.dumps(critic_report, ensure_ascii=False, indent=2)}
+
+Supported action types:
+- `rerun_solver`: for known deterministic solvers. Supported `solver`: `window_curtain_solver`, `retuck_workstation_chairs`.
+- `limit_bed_depth`: shrink a bed/sofa wall-normal depth only when critic says it is too long/bulky; preserve the back edge against its wall.
+- `move_object`: bounded translation of one object. Use only small values in meters. Fields: `object_id`, optional `dx`, `dy`, `dz`, optional `target_x`, `target_y`, `target_z`, `max_step`.
+- `scale_object_axis`: bounded scale of one object's scene-axis span. Fields: `object_id`, `scene_axis` (`x|y|z`), `scale_factor` between 0.65 and 1.35, `anchor` (`center|back_edge|front_edge|left_edge|right_edge|bottom_on_floor|top_edge`).
+- `set_yaw`: snap one object's yaw to a cardinal angle. Fields: `object_id`, `yaw` in `0|90|180|270`.
+
+Return only JSON:
+{{
+  "schema": "tree_sage_visual_critic_repair_planner_v1",
+  "repair_actions": [
+    {{
+      "action_type": "rerun_solver|limit_bed_depth|move_object|scale_object_axis|set_yaw",
+      "object_id": "optional existing object id",
+      "solver": "optional solver name",
+      "scene_axis": "optional x|y|z",
+      "scale_factor": 1.0,
+      "anchor": "center|back_edge|front_edge|left_edge|right_edge|bottom_on_floor|top_edge",
+      "dx": 0.0,
+      "dy": 0.0,
+      "dz": 0.0,
+      "target_x": null,
+      "target_y": null,
+      "target_z": null,
+      "max_step": 0.35,
+      "yaw": null,
+      "confidence": 0.0,
+      "source_issue_rank": 1,
+      "reason": "why this action follows from the critic issue"
+    }}
+  ],
+  "unsupported_actions": [
+    {{
+      "source_issue_rank": 1,
+      "area": "critic issue area",
+      "needed_module": "scene_graph|asset_generation|pose|scale|window_curtain_solver|density_refiner|support_solver|collision_solver|camera_or_render|new_solver|unknown",
+      "reason": "why no supported action should be applied"
+    }}
+  ],
+  "notes": ["short notes"]
+}}
+""".strip()
+
+
+def run_visual_critic_repair_planner_agent(
+    comparison_image: Path,
+    plan: dict[str, Any],
+    critic_report: dict[str, Any],
+    output_dir: Path,
+    model: str | None,
+    iteration: int | str = 1,
+) -> dict[str, Any]:
+    return run_codex_reference_json_agent(
+        f"visual_critic_repair_planner_iter_{iteration}",
+        build_visual_critic_repair_planner_prompt(plan, critic_report),
+        comparison_image,
+        output_dir,
+        model,
+    )
+
+
 def _scene_density_wall_id_for_object(
     obj: dict[str, Any],
     parent: dict[str, str] | None = None,
@@ -14631,6 +15775,11 @@ def apply_reference_depth_side_wall_tangent_alignment(
         dx = _safe_float(obj.get("x"), 0.0) - _safe_float(before.get("x"), 0.0)
         dy = _safe_float(obj.get("y"), 0.0) - _safe_float(before.get("y"), 0.0)
         moved_children = _move_direct_supported_children(objects, object_id, dx, dy, room) if (dx or dy) else []
+        moved_functional_companions = (
+            _move_workstation_chairs_with_table(objects, object_id, dx, dy, room, stage=stage)
+            if (dx or dy) and _is_table_anchor_object(obj)
+            else []
+        )
         after = _plan_object_snapshot(obj)
         if before != after:
             report["fixes"].append(
@@ -14644,6 +15793,7 @@ def apply_reference_depth_side_wall_tangent_alignment(
                     "raw_shift": round(float(raw_shift), 6),
                     "applied_shift": round(float(_safe_float(obj.get("y"), old_y) - old_y), 6),
                     "moved_children": moved_children,
+                    "moved_functional_companions": moved_functional_companions,
                     "evidence": evidence,
                     "reason": (
                         "Side-wall fixtures and nearby floor decor need a wall-tangent depth correction after "
@@ -14761,6 +15911,81 @@ def _tuck_workstation_chair_under_table(
     }
 
 
+def _move_workstation_chairs_with_table(
+    objects: dict[str, dict[str, Any]],
+    table_id: str,
+    dx: float,
+    dy: float,
+    room: dict[str, Any],
+    *,
+    stage: str,
+) -> list[dict[str, Any]]:
+    moved: list[dict[str, Any]] = []
+    if abs(dx) < 1e-6 and abs(dy) < 1e-6:
+        return moved
+    table = objects.get(str(table_id))
+    if not table or not _is_table_anchor_object(table):
+        return moved
+    for chair_id, chair in sorted(objects.items()):
+        if chair_id == str(table_id) or not _is_seating_object(chair):
+            continue
+        if not _is_desk_chair_tuck_pair(table, chair):
+            continue
+        before = _plan_object_snapshot(chair)
+        chair["x"] = _safe_float(chair.get("x"), 0.0) + dx
+        chair["y"] = _safe_float(chair.get("y"), 0.0) + dy
+        _clamp_object_to_room_rotated(chair, room, margin=0.005)
+        retuck = _tuck_workstation_chair_under_table(table, chair, room, stage=f"{stage}_after_table_move")
+        after = _plan_object_snapshot(chair)
+        if before != after:
+            moved.append(
+                {
+                    "id": chair_id,
+                    "before": before,
+                    "after": after,
+                    "retuck": retuck,
+                    "reason": (
+                        "A workstation chair is a functional companion of the desk/table anchor. "
+                        "When the table moves along a wall tangent, move and retuck the chair with it instead of leaving it at the old absolute coordinate."
+                    ),
+                }
+            )
+    return moved
+
+
+def retuck_workstation_chairs(
+    plan: dict[str, Any],
+    *,
+    stage: str,
+) -> dict[str, Any]:
+    report: dict[str, Any] = {
+        "schema": "tree_sage_workstation_chair_retuck_v1",
+        "stage": stage,
+        "fixes": [],
+        "fix_count": 0,
+        "ok": True,
+    }
+    room = plan.get("room") if isinstance(plan.get("room"), dict) else {}
+    objects = {str(obj.get("id")): obj for obj in plan.get("objects", []) if isinstance(obj, dict) and obj.get("id")}
+    seen_pairs: set[tuple[str, str]] = set()
+    for table_id, table in sorted(objects.items()):
+        if not _is_table_anchor_object(table):
+            continue
+        for chair_id, chair in sorted(objects.items()):
+            if chair_id == table_id or not _is_seating_object(chair):
+                continue
+            if (table_id, chair_id) in seen_pairs:
+                continue
+            if not _is_desk_chair_tuck_pair(table, chair):
+                continue
+            seen_pairs.add((table_id, chair_id))
+            fix = _tuck_workstation_chair_under_table(table, chair, room, stage=stage)
+            if fix:
+                report["fixes"].append(fix)
+    report["fix_count"] = len(report["fixes"])
+    return report
+
+
 def apply_functional_cluster_layout_priors(
     plan: dict[str, Any],
     scene_graph: dict[str, Any],
@@ -14789,6 +16014,19 @@ def apply_functional_cluster_layout_priors(
         table = objects.get(str(table_id))
         chair = objects.get(str(chair_id))
         if not table or not chair:
+            continue
+        table_parent = str(parent.get(str(table_id), "floor") or "floor")
+        if table_parent not in {"floor", "ground", *VIRTUAL_WALLS} or not _is_table_anchor_object(table):
+            report["skipped"].append(
+                {
+                    "type": "desk_workstation_chair_prior",
+                    "cluster_id": cluster.get("cluster_id"),
+                    "table_id": str(table_id),
+                    "chair_id": str(chair_id),
+                    "reason": "cluster table member is not a floor or wall-backed table anchor",
+                    "table_parent": table_parent,
+                }
+            )
             continue
         before = _plan_object_snapshot(chair)
         table_dims = table.get("dimensions") if isinstance(table.get("dimensions"), dict) else {}
@@ -15648,6 +16886,8 @@ def render_estimated_reference_view(
         "--resolution-y",
         str(resolution_y),
     ]
+    render_env = os.environ.copy()
+    render_env.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")
     proc = subprocess.run(
         cmd,
         text=True,
@@ -15655,6 +16895,7 @@ def render_estimated_reference_view(
         stderr=subprocess.PIPE,
         timeout=int(os.environ.get("SAGE_BLENDER_RENDER_TIMEOUT", "420")),
         check=False,
+        env=render_env,
     )
     output_path.with_suffix(".stdout.txt").write_text(proc.stdout, encoding="utf-8")
     output_path.with_suffix(".stderr.txt").write_text(proc.stderr, encoding="utf-8")
@@ -17992,7 +19233,7 @@ def _is_collision_exempt_pair(a: dict[str, Any], b: dict[str, Any], parent: dict
     if _is_floor_covering(a) or _is_floor_covering(b):
         return True
     if _is_desk_chair_tuck_pair(a, b):
-        return True
+        return _is_valid_desk_chair_tuck_collision_exemption(a, b)
     return False
 
 
@@ -18442,13 +19683,39 @@ def _is_seating_object(obj: dict[str, Any]) -> bool:
 def _is_table_anchor_object(obj: dict[str, Any]) -> bool:
     semantic = _semantic_class(obj)
     role = _semantic_layout_role(obj)
+    category_text = str(obj.get("category", "")).strip().lower()
+    id_text = str(obj.get("id", "")).strip().lower()
+    identity_text = f"{id_text} {category_text}"
+    placement_type = str(obj.get("placement_type") or "").strip().lower()
+    support_id = str(obj.get("support_id") or obj.get("support_hint") or "").strip().lower()
+    if placement_type in {"on", "on_top", "on_top_of", "inside", "in"}:
+        return False
+    if support_id and support_id not in {"floor", "ground", *VIRTUAL_WALLS}:
+        return False
+    tabletop_child_terms = (
+        "plant",
+        "lamp",
+        "vase",
+        "clock",
+        "book",
+        "stack",
+        "frame",
+        "photo",
+        "picture",
+        "art",
+        "decor",
+        "bottle",
+        "cup",
+        "mug",
+        "pillow",
+        "cushion",
+    )
+    if any(keyword in identity_text for keyword in tabletop_child_terms):
+        return False
     if semantic in TABLE_ANCHOR_SEMANTIC_CLASSES or role == "table_anchor":
         return True
     if semantic in SMALL_POSE_SEMANTIC_CLASSES | SEATING_SEMANTIC_CLASSES | BOOK_STORAGE_SEMANTIC_CLASSES | WALL_ATTACHED_SEMANTIC_CLASSES:
         return False
-    category_text = str(obj.get("category", "")).strip().lower()
-    id_text = str(obj.get("id", "")).strip().lower()
-    identity_text = f"{id_text} {category_text}"
     return any(
         keyword in identity_text
         for keyword in ("conference table", "dining table", "meeting table", "table", "desk", "counter", "island")
@@ -18457,13 +19724,45 @@ def _is_table_anchor_object(obj: dict[str, Any]) -> bool:
 
 def _is_directional_front_object(obj: dict[str, Any]) -> bool:
     text = _category_text(obj)
+    identity = _object_identity_text(obj)
     if any(keyword in text for keyword in ("pouf", "ottoman", "stool", "rug", "carpet")):
         return False
+    if any(keyword in identity for keyword in ("curtain", "drape", "drapery", "curtain rod", "drape rod", "lamp", "plant", "vase")):
+        return False
+    if not _is_book_storage(obj) and any(keyword in identity for keyword in ("book stack", "books stack", "stack of books")):
+        return False
     if _is_wall_attached_object(obj):
-        identity = _object_identity_text(obj)
-        return any(keyword in identity for keyword in ("door", "closet", "wardrobe", "cabinet"))
+        return any(
+            keyword in identity
+            for keyword in (
+                "door",
+                "closet",
+                "wardrobe",
+                "cabinet",
+                "clock",
+                "art",
+                "painting",
+                "picture",
+                "poster",
+                "mirror",
+                "window",
+            )
+        )
     if _is_floor_covering(obj) or _is_hanging_object(obj):
         return False
+    if any(
+        keyword in _object_identity_text(obj)
+        for keyword in (
+            "alarm clock",
+            "clock",
+            "photo frame",
+            "picture frame",
+            "framed photo",
+            "monitor",
+            "screen",
+        )
+    ):
+        return True
     return _is_bed_or_sofa_object(obj) or _is_seating_object(obj) or _is_table_anchor_object(obj) or _is_book_storage(obj) or any(
         keyword in text for keyword in ("cabinet", "door", "dresser", "wardrobe", "nightstand", "bedside cabinet", "drawer chest")
     )
@@ -24441,12 +25740,19 @@ def build_fine_spatial_order_detailed_prompt(
     plan: dict[str, Any],
     scene_graph: dict[str, Any],
     parent: dict[str, str],
+    layout_template_context: dict[str, Any] | None = None,
 ) -> str:
     snapshot = _fine_detailed_layout_snapshot(plan, scene_graph, parent)
     snapshot_json = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
     scene_prompt_short = str(scene_prompt or "")
     if len(scene_prompt_short) > 240:
         scene_prompt_short = scene_prompt_short[:237].rstrip() + "..."
+    template_guidance = format_layout_template_prompt_context(layout_template_context, "fine_spatial_order_detailed")
+    template_block = (
+        f"\nLayout template guidance:\n{template_guidance}\n"
+        if template_guidance
+        else ""
+    )
     return f"""
 You are the third-stage detailed spatial-order reader for TreeSAGE Flow 2.
 The attached image may be a side-by-side comparison: the left side is the reference image and the right side is the current render.
@@ -24457,6 +25763,7 @@ Scene prompt:
 
 Current scene/layout snapshot:
 {snapshot_json}
+{template_block}
 
 Your task is to infer fine, endpoint-level axis relationships from the reference, not just object-center order.
 Output constraints that the deterministic third-stage solver can check against the current scene.
@@ -24469,6 +25776,7 @@ Use this coordinate schema:
 Important:
 - Emit endpoint relations such as "a.high <= b.high" or "a.low approximately equals b.low".
 - For depth containment/overlap, describe the endpoint order explicitly. Example: if A spans around B on the y axis, output A.low <= B.low and B.high <= A.high. If the visual order is A_back < B_back < B_front < A_front, express it with low/high endpoint constraints using the provided y convention.
+- For a narrower object contained inside a wider object's span on any axis, output wider.low <= narrower.low and narrower.high <= wider.high. Example: if wall art is narrower than and contained over a bed, output bed.low <= art.low and art.high <= bed.high; do not reverse these endpoints.
 - Window/curtain/rod clusters are locked layout units. Judge them as a single unit unless the visible error is explicitly about their internal assembly order.
 - Do not emit support-surface constraints between a child object and its support, such as lamp/book/plant-on-nightstand alignment or tabletop z contact. The support registry and tabletop packer handle those relations.
 - For rugs/floor coverings, be exact about endpoint direction. If a rug extends left/front beyond a bed, output rug.low <= bed.low. If a rug extends right/back beyond a bed, output bed.high <= rug.high. Do not reverse these containment endpoints.
@@ -24520,10 +25828,17 @@ def run_fine_spatial_order_detailed_agent(
     comparison_or_reference_image: Path,
     output_dir: Path,
     model: str | None,
+    layout_template_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return run_codex_reference_json_agent(
         "fine_spatial_order_detailed",
-        build_fine_spatial_order_detailed_prompt(scene_prompt, plan, scene_graph, parent),
+        build_fine_spatial_order_detailed_prompt(
+            scene_prompt,
+            plan,
+            scene_graph,
+            parent,
+            layout_template_context,
+        ),
         comparison_or_reference_image,
         output_dir,
         model,
@@ -24936,6 +26251,94 @@ def _fine_detailed_repair_floor_covering_endpoint_relation(
     return repaired, repair
 
 
+def _fine_detailed_relation_text_indicates_containment(text: str) -> bool:
+    lowered = text.lower().replace("_", " ")
+    phrases = (
+        "contained",
+        "inside",
+        "within",
+        "narrower than",
+        "shorter than",
+        "smaller than",
+        "keep art left edge inside",
+        "keep art right edge inside",
+        "inside bed span",
+        "inside the bed span",
+        "inside bed width",
+        "inside the bed width",
+        "over headboard width",
+    )
+    return any(phrase in lowered for phrase in phrases)
+
+
+def _fine_detailed_unit_axis_span(unit: dict[str, Any], axis: str) -> float | None:
+    bounds = unit.get("scene_bounds", {}).get(axis) if isinstance(unit.get("scene_bounds"), dict) else None
+    if isinstance(bounds, list) and len(bounds) >= 4:
+        return max(0.0, _safe_float(bounds[3], 0.0))
+    if isinstance(bounds, list) and len(bounds) >= 2:
+        return max(0.0, _safe_float(bounds[-1], 0.0) - _safe_float(bounds[0], 0.0))
+    return None
+
+
+def _fine_detailed_repair_containment_endpoint_relation(
+    relation: dict[str, Any],
+    objects: dict[str, dict[str, Any]],
+    unit_by_id: dict[str, dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    if str(relation.get("relation") or "") != "less_than_or_equal":
+        return relation, None
+    axis = str(relation.get("axis") or "")
+    if axis not in {"x", "y", "z"}:
+        return relation, None
+    left_ref = relation.get("left") if isinstance(relation.get("left"), dict) else {}
+    right_ref = relation.get("right") if isinstance(relation.get("right"), dict) else {}
+    edge = str(left_ref.get("edge") or "")
+    if edge not in {"low", "high"} or edge != str(right_ref.get("edge") or ""):
+        return relation, None
+    left_unit = unit_by_id.get(str(left_ref.get("unit_id") or ""))
+    right_unit = unit_by_id.get(str(right_ref.get("unit_id") or ""))
+    if not left_unit or not right_unit:
+        return relation, None
+    if _fine_detailed_unit_is_floor_covering(objects, left_unit) or _fine_detailed_unit_is_floor_covering(objects, right_unit):
+        return relation, None
+    evidence_text = f"{relation.get('evidence') or ''} {relation.get('expected_effect') or ''}"
+    if not _fine_detailed_relation_text_indicates_containment(evidence_text):
+        return relation, None
+    left_span = _fine_detailed_unit_axis_span(left_unit, axis)
+    right_span = _fine_detailed_unit_axis_span(right_unit, axis)
+    if left_span is None or right_span is None:
+        return relation, None
+    if min(left_span, right_span) <= 0.0:
+        return relation, None
+    if abs(left_span - right_span) <= max(0.08, 0.12 * max(left_span, right_span)):
+        return relation, None
+    narrower_ref = left_ref if left_span < right_span else right_ref
+    wider_ref = right_ref if left_span < right_span else left_ref
+    desired_left = wider_ref if edge == "low" else narrower_ref
+    desired_right = narrower_ref if edge == "low" else wider_ref
+    if (
+        str(left_ref.get("unit_id") or "") == str(desired_left.get("unit_id") or "")
+        and str(right_ref.get("unit_id") or "") == str(desired_right.get("unit_id") or "")
+    ):
+        return relation, None
+    repaired = deepcopy(relation)
+    repaired["left"] = dict(desired_left)
+    repaired["right"] = dict(desired_right)
+    repair = {
+        "relation_index": relation.get("index"),
+        "reason": "contained_narrower_unit_endpoint_direction",
+        "axis": axis,
+        "edge": edge,
+        "narrower_unit_id": narrower_ref.get("unit_id"),
+        "wider_unit_id": wider_ref.get("unit_id"),
+        "before": {"left": relation.get("left"), "right": relation.get("right")},
+        "after": {"left": repaired.get("left"), "right": repaired.get("right")},
+        "evidence": relation.get("evidence"),
+        "expected_effect": relation.get("expected_effect"),
+    }
+    return repaired, repair
+
+
 def _fine_detailed_unit_map(
     plan: dict[str, Any],
     scene_graph: dict[str, Any],
@@ -25273,9 +26676,12 @@ def _fine_spatial_order_detailed_agent_refinement(
     repaired_relations: list[dict[str, Any]] = []
     for relation in relations:
         repaired, repair = _fine_detailed_repair_floor_covering_endpoint_relation(relation, objects, unit_by_id)
+        repaired, containment_repair = _fine_detailed_repair_containment_endpoint_relation(repaired, objects, unit_by_id)
         repaired_relations.append(repaired)
         if repair:
             relation_repairs.append(repair)
+        if containment_repair:
+            relation_repairs.append(containment_repair)
     relations = repaired_relations
     agent_section["relations"] = relations
     agent_section["skipped"] = skipped
@@ -25703,6 +27109,9 @@ def _fine_bbox_projection_overlap_candidates(
                     "reference_overlap_ratio": round(float(overlap_ratio), 6),
                     "target_scene_overlap": round(max(0.0, float(FINE_BBOX_PROJECTION_OVERLAP_TARGET_SCENE_OVERLAP)), 6),
                     "importance": "required",
+                    "source": "reference_bbox_projection",
+                    "priority": 20,
+                    "is_human_constraint": False,
                     "solver_constraints": [
                         f"{left_id}.{scene_axis}.low <= {right_id}.{scene_axis}.high",
                         f"{right_id}.{scene_axis}.low <= {left_id}.{scene_axis}.high",
@@ -25761,8 +27170,18 @@ def _fine_bbox_projection_overlap_candidates(
             continue
         key = (str(left_unit.get("unit_id") or ""), str(right_unit.get("unit_id") or ""), axis)
         if key in seen:
-            continue
-        seen.add(key)
+            auto_candidates = [
+                candidate
+                for candidate in auto_candidates
+                if (
+                    str(candidate.get("left_unit_id") or ""),
+                    str(candidate.get("right_unit_id") or ""),
+                    str(candidate.get("axis") or ""),
+                )
+                != key
+            ]
+        else:
+            seen.add(key)
         target_scene_overlap = max(
             0.0,
             _safe_float(item.get("target_scene_overlap"), FINE_BBOX_PROJECTION_OVERLAP_TARGET_SCENE_OVERLAP),
@@ -25782,6 +27201,8 @@ def _fine_bbox_projection_overlap_candidates(
                 "target_scene_overlap": round(float(target_scene_overlap), 6),
                 "importance": str(item.get("importance") or "required"),
                 "source": "human_constraints",
+                "priority": 100,
+                "is_human_constraint": True,
                 "human_constraint_index": item.get("human_constraint_index", index),
                 "solver_constraints": [
                     f"{key[0]}.{axis}.low <= {key[1]}.{axis}.high",
@@ -25790,7 +27211,7 @@ def _fine_bbox_projection_overlap_candidates(
                 "evidence": str(item.get("evidence") or "Human-specified scene bbox interval intersection."),
             }
         )
-    return [*auto_candidates, *human_candidates]
+    return [*human_candidates, *auto_candidates]
 
 
 def _fine_bbox_projection_current_state(
@@ -25888,6 +27309,9 @@ def _fine_bbox_projection_apply_side_wall_decor_storage_overlap(
     for fix in fixes:
         fix["constraint_family"] = "bbox_projection_overlap"
         fix["constraint_id"] = constraint.get("constraint_id")
+        fix["constraint_source"] = constraint.get("source")
+        fix["constraint_priority"] = constraint.get("priority")
+        fix["is_human_constraint"] = bool(constraint.get("is_human_constraint"))
         fix["protected_side_wall_decor_id"] = decor_id
         fix["protected_side_wall_storage_id"] = storage_id
     return {
@@ -26007,6 +27431,9 @@ def _fine_bbox_projection_apply_overlap_move(
         "after": after,
         "state_before": state,
         "constraint": constraint,
+        "constraint_source": constraint.get("source"),
+        "constraint_priority": constraint.get("priority"),
+        "is_human_constraint": bool(constraint.get("is_human_constraint")),
         "move_options": [
             {key: value for key, value in option.items() if key != "unit"}
             for option in options
@@ -26024,10 +27451,12 @@ def _fine_spatial_order_bbox_projection_overlap_refinement(
     *,
     enabled: bool,
     max_step: float,
+    human_only: bool = False,
 ) -> None:
     section: dict[str, Any] = {
         "schema": "tree_sage_bbox_projection_overlap_refinement_v1",
         "enabled": bool(enabled),
+        "human_only": bool(human_only),
         "candidates": [],
         "checks": [],
         "fixes": [],
@@ -26044,8 +27473,30 @@ def _fine_spatial_order_bbox_projection_overlap_refinement(
         report["bbox_projection_overlap_unresolved_required_count"] = 0
         return
     constraints = _fine_bbox_projection_overlap_candidates(plan, scene_graph, parent)
+    if human_only:
+        constraints = [
+            constraint
+            for constraint in constraints
+            if bool(constraint.get("is_human_constraint")) or str(constraint.get("source") or "") == "human_constraints"
+        ]
+    constraints.sort(
+        key=lambda item: (
+            -int(_safe_float(item.get("priority"), 0.0)),
+            str(item.get("source") or ""),
+            str(item.get("left_unit_id") or ""),
+            str(item.get("right_unit_id") or ""),
+            str(item.get("axis") or ""),
+        )
+    )
     section["candidates"] = constraints
     section["constraint_count"] = len(constraints)
+    section["human_constraint_count"] = len(
+        [
+            constraint
+            for constraint in constraints
+            if bool(constraint.get("is_human_constraint")) or str(constraint.get("source") or "") == "human_constraints"
+        ]
+    )
     tolerance = max(0.0, float(FINE_SPATIAL_ORDER_DETAILED_TOLERANCE))
     for iteration in range(3):
         iteration_fix_count = 0
@@ -26126,6 +27577,9 @@ def _fine_spatial_order_bbox_projection_overlap_refinement(
                 "right_unit_id": constraint.get("right_unit_id"),
                 "axis": constraint.get("axis"),
                 "importance": constraint.get("importance"),
+                "source": constraint.get("source"),
+                "priority": constraint.get("priority"),
+                "is_human_constraint": bool(constraint.get("is_human_constraint")),
                 "state": state,
                 "reference_overlap_ratio": constraint.get("reference_overlap_ratio"),
                 "reference_overlap": constraint.get("reference_overlap"),
@@ -26134,9 +27588,24 @@ def _fine_spatial_order_bbox_projection_overlap_refinement(
             }
         )
     section["fix_count"] = len(section["fixes"])
+    section["human_fix_count"] = len(
+        [
+            fix
+            for fix in section["fixes"]
+            if bool(fix.get("is_human_constraint")) or str(fix.get("constraint_source") or "") == "human_constraints"
+        ]
+    )
     section["unresolved"] = unresolved
     section["unresolved_required_count"] = len(
         [item for item in unresolved if str(item.get("importance") or "") == "required"]
+    )
+    section["human_unresolved_required_count"] = len(
+        [
+            item
+            for item in unresolved
+            if str(item.get("importance") or "") == "required"
+            and (bool(item.get("is_human_constraint")) or str(item.get("source") or "") == "human_constraints")
+        ]
     )
     report.setdefault("fixes", []).extend(section["fixes"])
     report.setdefault("bbox_projection_overlap_fixes", []).extend(section["fixes"])
@@ -26144,6 +27613,9 @@ def _fine_spatial_order_bbox_projection_overlap_refinement(
     report["bbox_projection_overlap_constraint_count"] = int(section["constraint_count"])
     report["bbox_projection_overlap_fix_count"] = int(section["fix_count"])
     report["bbox_projection_overlap_unresolved_required_count"] = int(section["unresolved_required_count"])
+    report["bbox_projection_overlap_human_constraint_count"] = int(section["human_constraint_count"])
+    report["bbox_projection_overlap_human_fix_count"] = int(section["human_fix_count"])
+    report["bbox_projection_overlap_human_unresolved_required_count"] = int(section["human_unresolved_required_count"])
 
 
 def _fine_scene_axis_dimension_key(obj: dict[str, Any], scene_axis: str) -> str | None:
@@ -26170,6 +27642,667 @@ def _fine_scene_axis_dimension_key(obj: dict[str, Any], scene_axis: str) -> str 
     return best_key if best_delta > 1e-5 else None
 
 
+def _visual_critic_score(report: dict[str, Any]) -> float:
+    return _clamp(_safe_float(report.get("overall_score"), 0.0), 0.0, 1.0)
+
+
+def _visual_critic_accepts(report: dict[str, Any], min_score: float) -> bool:
+    verdict = str(report.get("overall_acceptability") or "").strip().lower()
+    if verdict == "accept" and _safe_float(report.get("confidence"), 0.0) >= 0.55:
+        return True
+    return _visual_critic_score(report) >= float(min_score)
+
+
+def _visual_critic_text(report: dict[str, Any]) -> str:
+    chunks: list[str] = [
+        str(report.get("overall_acceptability") or ""),
+        str(report.get("brief_verdict") or ""),
+    ]
+    for key in ("major_issues", "minor_issues", "candidate_gate_rules"):
+        items = report.get(key)
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if isinstance(item, dict):
+                chunks.extend(str(value) for value in item.values() if value is not None)
+            else:
+                chunks.append(str(item))
+    return " ".join(chunks).lower()
+
+
+def _classify_visual_critic_issues(report: dict[str, Any]) -> list[dict[str, Any]]:
+    classifications: list[dict[str, Any]] = []
+    for issue in report.get("major_issues", []) if isinstance(report.get("major_issues"), list) else []:
+        if not isinstance(issue, dict):
+            continue
+        module = str(issue.get("likely_pipeline_module") or "unknown").strip().lower()
+        severity = str(issue.get("severity") or "").strip().lower()
+        if module in {"window_curtain_solver", "scale", "pose", "density_refiner", "support_solver", "collision_solver"}:
+            kind = "flow_module_candidate"
+        elif module == "asset_generation":
+            kind = "asset_or_run_candidate"
+        elif module == "camera_or_render":
+            kind = "evaluation_setup"
+        else:
+            kind = "unknown_needs_localization"
+        classifications.append(
+            {
+                "rank": issue.get("rank"),
+                "severity": severity,
+                "area": issue.get("area"),
+                "likely_pipeline_module": module,
+                "classification": kind,
+                "suggested_test_or_fix": issue.get("suggested_test_or_fix"),
+            }
+        )
+    return classifications
+
+
+def _visual_critic_requests_window_curtain_repair(report: dict[str, Any]) -> bool:
+    text = _visual_critic_text(report)
+    return (
+        "window_curtain_solver" in text
+        or "window_curtain_cluster" in text
+        or ("window" in text and ("curtain" in text or "drape" in text) and ("top" in text or "symmetr" in text or "compact" in text))
+    )
+
+
+def _visual_critic_requests_bed_depth_repair(report: dict[str, Any]) -> bool:
+    text = _visual_critic_text(report)
+    return "bed" in text and ("scale" in text or "depth" in text or "long" in text or "stretched" in text or "bulky" in text)
+
+
+def _apply_visual_critic_bed_depth_limit(
+    plan: dict[str, Any],
+    cross_constraints: list[dict[str, Any]],
+    parent: dict[str, str],
+    report: dict[str, Any],
+) -> None:
+    room = plan.get("room") if isinstance(plan.get("room"), dict) else {}
+    if not room:
+        return
+    objects = {str(obj.get("id")): obj for obj in plan.get("objects", []) if isinstance(obj, dict) and obj.get("id")}
+    for bed in objects.values():
+        if not _is_bed_or_sofa_object(bed) or str(bed.get("placement_type") or "floor") != "floor":
+            continue
+        wall_id = _back_to_wall_target_wall(bed, cross_constraints, parent)
+        if wall_id not in VIRTUAL_WALLS:
+            continue
+        axis = "y" if wall_id in {"wall_north", "wall_south"} else "x"
+        room_extent = _safe_float(room.get("length" if axis == "y" else "width"), 0.0)
+        if room_extent <= 0.0:
+            continue
+        dim_key = _fine_scene_axis_dimension_key(bed, axis)
+        dims = bed.get("dimensions") if isinstance(bed.get("dimensions"), dict) else {}
+        if not dim_key or dim_key not in dims:
+            continue
+        old_min, old_max = _bbox_for_object(bed)
+        current_scene_depth = float(old_max[1] - old_min[1]) if axis == "y" else float(old_max[0] - old_min[0])
+        max_depth = min(float(FINAL_VISUAL_CRITIC_BED_MAX_DEPTH), room_extent * float(FINAL_VISUAL_CRITIC_BED_MAX_ROOM_DEPTH_RATIO))
+        if current_scene_depth <= max_depth + 0.05:
+            continue
+        before = _plan_object_snapshot(bed)
+        before_dimensions = dict(dims)
+        ratio = _clamp(max_depth / max(current_scene_depth, 1e-6), 0.55, 0.98)
+        current_dim = _safe_float(dims.get(dim_key), 0.0)
+        if current_dim <= 0.0:
+            continue
+        dims[dim_key] = max(current_dim * ratio, 1.55)
+        bed["dimensions"] = dims
+        new_min, new_max = _bbox_for_object(bed)
+        dx = dy = 0.0
+        if wall_id == "wall_north":
+            dy = float(old_max[1]) - float(new_max[1])
+        elif wall_id == "wall_south":
+            dy = float(old_min[1]) - float(new_min[1])
+        elif wall_id == "wall_east":
+            dx = float(old_max[0]) - float(new_max[0])
+        elif wall_id == "wall_west":
+            dx = float(old_min[0]) - float(new_min[0])
+        old_x = _safe_float(bed.get("x"), 0.0)
+        old_y = _safe_float(bed.get("y"), 0.0)
+        bed["x"] = old_x + dx
+        bed["y"] = old_y + dy
+        _clamp_object_to_room(bed, room)
+        moved_children = _move_direct_supported_children(
+            objects,
+            str(bed.get("id") or ""),
+            _safe_float(bed.get("x"), old_x) - old_x,
+            _safe_float(bed.get("y"), old_y) - old_y,
+            room,
+        )
+        after = _plan_object_snapshot(bed)
+        if before != after:
+            report.setdefault("fixes", []).append(
+                {
+                    "type": "visual_critic_bed_depth_limit",
+                    "id": bed.get("id"),
+                    "wall_id": wall_id,
+                    "axis": axis,
+                    "dimension_key": dim_key,
+                    "before": before,
+                    "after": after,
+                    "before_dimensions": before_dimensions,
+                    "after_dimensions": dict(dims),
+                    "current_scene_depth": round(float(current_scene_depth), 6),
+                    "target_max_scene_depth": round(float(max_depth), 6),
+                    "applied_ratio": round(float(ratio), 6),
+                    "moved_children": moved_children,
+                    "evidence": "The final visual critic reported an over-stretched bed; shrink the wall-normal bed depth while preserving the back edge against the wall.",
+                }
+            )
+
+
+def _fallback_visual_critic_repair_plan(critic_report: dict[str, Any]) -> dict[str, Any]:
+    actions: list[dict[str, Any]] = []
+    if _visual_critic_requests_window_curtain_repair(critic_report):
+        actions.append(
+            {
+                "action_type": "rerun_solver",
+                "solver": "window_curtain_solver",
+                "confidence": 0.72,
+                "source_issue_rank": 1,
+                "reason": "fallback planner detected window/curtain cluster criticism",
+            }
+        )
+    if _visual_critic_requests_bed_depth_repair(critic_report):
+        actions.append(
+            {
+                "action_type": "limit_bed_depth",
+                "confidence": 0.70,
+                "source_issue_rank": 1,
+                "reason": "fallback planner detected bed depth/scale criticism",
+            }
+        )
+    text = _visual_critic_text(critic_report)
+    if "desk" in text and "chair" in text and ("tuck" in text or "workstation" in text or "offset" in text):
+        actions.append(
+            {
+                "action_type": "rerun_solver",
+                "solver": "retuck_workstation_chairs",
+                "confidence": 0.68,
+                "source_issue_rank": 1,
+                "reason": "fallback planner detected desk-chair tuck criticism",
+            }
+        )
+    return {
+        "schema": "tree_sage_visual_critic_repair_planner_v1",
+        "source": "fallback_from_critic_text",
+        "repair_actions": actions,
+        "unsupported_actions": [],
+    }
+
+
+def _visual_critic_action_type(action: dict[str, Any]) -> str:
+    return str(action.get("action_type") or action.get("type") or "").strip().lower()
+
+
+def _visual_critic_planned_actions(planner_report: dict[str, Any] | None, critic_report: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    fallback = _fallback_visual_critic_repair_plan(critic_report)
+    planned: list[dict[str, Any]] = []
+    if isinstance(planner_report, dict):
+        for action in planner_report.get("repair_actions", []) if isinstance(planner_report.get("repair_actions"), list) else []:
+            if isinstance(action, dict):
+                planned.append(dict(action))
+    existing_keys = {
+        (
+            _visual_critic_action_type(action),
+            str(action.get("solver") or ""),
+            str(action.get("object_id") or ""),
+        )
+        for action in planned
+    }
+    for action in fallback.get("repair_actions", []):
+        key = (
+            _visual_critic_action_type(action),
+            str(action.get("solver") or ""),
+            str(action.get("object_id") or ""),
+        )
+        if key not in existing_keys:
+            planned.append(dict(action))
+            existing_keys.add(key)
+    merged = deepcopy(planner_report) if isinstance(planner_report, dict) else {}
+    merged.setdefault("schema", "tree_sage_visual_critic_repair_planner_v1")
+    merged["repair_actions_merged"] = planned
+    merged["fallback_actions"] = fallback.get("repair_actions", [])
+    return planned, merged
+
+
+def _snapshot_with_dimensions(obj: dict[str, Any]) -> dict[str, Any]:
+    snapshot = _plan_object_snapshot(obj)
+    dims = obj.get("dimensions") if isinstance(obj.get("dimensions"), dict) else {}
+    snapshot["dimensions"] = {
+        key: round(float(value), 6)
+        for key, value in dims.items()
+        if isinstance(value, (int, float))
+    }
+    return snapshot
+
+
+def _visual_critic_move_object(
+    plan: dict[str, Any],
+    parent: dict[str, str],
+    action: dict[str, Any],
+) -> dict[str, Any] | None:
+    room = plan.get("room") if isinstance(plan.get("room"), dict) else {}
+    objects = {str(obj.get("id")): obj for obj in plan.get("objects", []) if isinstance(obj, dict) and obj.get("id")}
+    object_id = str(action.get("object_id") or "")
+    obj = objects.get(object_id)
+    if not obj:
+        return None
+    max_step = _clamp(_safe_float(action.get("max_step"), 0.35), 0.02, 0.45)
+    old_x = _safe_float(obj.get("x"), 0.0)
+    old_y = _safe_float(obj.get("y"), 0.0)
+    old_z = _safe_float(obj.get("z"), 0.0)
+    dx = _safe_float(action.get("dx"), 0.0)
+    dy = _safe_float(action.get("dy"), 0.0)
+    dz = _safe_float(action.get("dz"), 0.0)
+    if action.get("target_x") is not None:
+        dx = _safe_float(action.get("target_x"), old_x) - old_x
+    if action.get("target_y") is not None:
+        dy = _safe_float(action.get("target_y"), old_y) - old_y
+    if action.get("target_z") is not None:
+        dz = _safe_float(action.get("target_z"), old_z) - old_z
+    dx = _clamp(dx, -max_step, max_step)
+    dy = _clamp(dy, -max_step, max_step)
+    dz = _clamp(dz, -max_step, max_step)
+    if abs(dx) + abs(dy) + abs(dz) <= 1e-6:
+        return None
+    before = _snapshot_with_dimensions(obj)
+    obj["x"] = old_x + dx
+    obj["y"] = old_y + dy
+    obj["z"] = max(0.0, old_z + dz)
+    wall_id = _object_attached_wall_id(objects, object_id, parent)
+    if str(obj.get("placement_type") or "") == "attached_to_wall" and wall_id in VIRTUAL_WALLS:
+        _clamp_wall_attached_object(obj, room, wall_id)
+    else:
+        _clamp_object_to_room_rotated(obj, room, margin=0.005)
+    moved_children = _move_direct_supported_children(
+        objects,
+        object_id,
+        _safe_float(obj.get("x"), old_x) - old_x,
+        _safe_float(obj.get("y"), old_y) - old_y,
+        room,
+    )
+    after = _snapshot_with_dimensions(obj)
+    if before == after:
+        return None
+    return {
+        "type": "visual_critic_move_object",
+        "id": object_id,
+        "before": before,
+        "after": after,
+        "requested_action": action,
+        "moved_children": moved_children,
+    }
+
+
+def _visual_critic_scale_object_axis(
+    plan: dict[str, Any],
+    parent: dict[str, str],
+    action: dict[str, Any],
+) -> dict[str, Any] | None:
+    room = plan.get("room") if isinstance(plan.get("room"), dict) else {}
+    objects = {str(obj.get("id")): obj for obj in plan.get("objects", []) if isinstance(obj, dict) and obj.get("id")}
+    object_id = str(action.get("object_id") or "")
+    obj = objects.get(object_id)
+    if not obj:
+        return None
+    scene_axis = str(action.get("scene_axis") or "").strip().lower()
+    if scene_axis not in {"x", "y", "z"}:
+        return None
+    dims = obj.get("dimensions") if isinstance(obj.get("dimensions"), dict) else {}
+    if not dims:
+        return None
+    before = _snapshot_with_dimensions(obj)
+    old_min, old_max = _bbox_for_object(obj)
+    old_x = _safe_float(obj.get("x"), 0.0)
+    old_y = _safe_float(obj.get("y"), 0.0)
+    scale_factor = _clamp(_safe_float(action.get("scale_factor"), 1.0), 0.65, 1.35)
+    if abs(scale_factor - 1.0) <= 1e-3:
+        return None
+    if scene_axis == "z":
+        current = _safe_float(dims.get("height"), 0.0)
+        if current <= 0.0:
+            return None
+        dims["height"] = max(0.04, current * scale_factor)
+    else:
+        dim_key = _fine_scene_axis_dimension_key(obj, scene_axis)
+        if not dim_key or dim_key not in dims:
+            return None
+        current = _safe_float(dims.get(dim_key), 0.0)
+        if current <= 0.0:
+            return None
+        dims[dim_key] = max(0.04, current * scale_factor)
+    obj["dimensions"] = dims
+    new_min, new_max = _bbox_for_object(obj)
+    anchor = str(action.get("anchor") or "center").strip().lower()
+    if scene_axis == "x":
+        if anchor in {"left_edge", "front_edge"}:
+            obj["x"] = _safe_float(obj.get("x"), 0.0) + (float(old_min[0]) - float(new_min[0]))
+        elif anchor in {"right_edge", "back_edge"}:
+            obj["x"] = _safe_float(obj.get("x"), 0.0) + (float(old_max[0]) - float(new_max[0]))
+    elif scene_axis == "y":
+        if anchor in {"front_edge", "left_edge"}:
+            obj["y"] = _safe_float(obj.get("y"), 0.0) + (float(old_min[1]) - float(new_min[1]))
+        elif anchor in {"back_edge", "right_edge"}:
+            obj["y"] = _safe_float(obj.get("y"), 0.0) + (float(old_max[1]) - float(new_max[1]))
+    elif scene_axis == "z":
+        if anchor == "top_edge":
+            obj["z"] = _safe_float(obj.get("z"), 0.0) + (float(old_max[2]) - float(new_max[2]))
+        elif anchor == "bottom_on_floor":
+            obj["z"] = float(old_min[2])
+    wall_id = _object_attached_wall_id(objects, object_id, parent)
+    if str(obj.get("placement_type") or "") == "attached_to_wall" and wall_id in VIRTUAL_WALLS:
+        _clamp_wall_attached_object(obj, room, wall_id)
+    else:
+        _clamp_object_to_room_rotated(obj, room, margin=0.005)
+    moved_children = _move_direct_supported_children(
+        objects,
+        object_id,
+        _safe_float(obj.get("x"), old_x) - old_x,
+        _safe_float(obj.get("y"), old_y) - old_y,
+        room,
+    )
+    after = _snapshot_with_dimensions(obj)
+    if before == after:
+        return None
+    return {
+        "type": "visual_critic_scale_object_axis",
+        "id": object_id,
+        "scene_axis": scene_axis,
+        "anchor": anchor,
+        "before": before,
+        "after": after,
+        "requested_action": action,
+        "moved_children": moved_children,
+    }
+
+
+def _visual_critic_set_yaw(
+    plan: dict[str, Any],
+    parent: dict[str, str],
+    action: dict[str, Any],
+) -> dict[str, Any] | None:
+    del parent
+    room = plan.get("room") if isinstance(plan.get("room"), dict) else {}
+    objects = {str(obj.get("id")): obj for obj in plan.get("objects", []) if isinstance(obj, dict) and obj.get("id")}
+    object_id = str(action.get("object_id") or "")
+    obj = objects.get(object_id)
+    if not obj:
+        return None
+    yaw = _round_yaw_90(_safe_float(action.get("yaw"), _safe_float(obj.get("yaw"), 0.0)))
+    before = _snapshot_with_dimensions(obj)
+    obj["yaw"] = yaw
+    if str(obj.get("placement_type") or "") != "attached_to_wall":
+        _clamp_object_to_room_rotated(obj, room, margin=0.005)
+    after = _snapshot_with_dimensions(obj)
+    if before == after:
+        return None
+    return {
+        "type": "visual_critic_set_yaw",
+        "id": object_id,
+        "before": before,
+        "after": after,
+        "requested_action": action,
+    }
+
+
+def _visual_critic_action_generality(action: dict[str, Any]) -> str:
+    action_type = _visual_critic_action_type(action)
+    solver = str(action.get("solver") or "").strip().lower()
+    if action_type == "rerun_solver" and solver in {"window_curtain_solver", "retuck_workstation_chairs"}:
+        return "module_invariant_candidate"
+    if action_type == "limit_bed_depth":
+        return "scene_specific_parameter_repair"
+    if action_type in {"move_object", "scale_object_axis", "set_yaw"}:
+        return "scene_specific_object_edit"
+    return "unsupported_or_unknown"
+
+
+def _assess_visual_critic_generalization(
+    *,
+    critic_report: dict[str, Any],
+    planner_report: dict[str, Any] | None,
+    repair_report: dict[str, Any] | None,
+    improved: bool | None,
+    accepted: bool | None,
+    score_before: float | None,
+    score_after: float | None,
+) -> dict[str, Any]:
+    repair_report = repair_report if isinstance(repair_report, dict) else {}
+    planner_report = planner_report if isinstance(planner_report, dict) else {}
+    actions = planner_report.get("repair_actions_merged")
+    if not isinstance(actions, list):
+        actions = planner_report.get("repair_actions") if isinstance(planner_report.get("repair_actions"), list) else []
+    issue_assessments: list[dict[str, Any]] = []
+    candidate_general: list[dict[str, Any]] = []
+    scene_specific: list[dict[str, Any]] = []
+    unsupported: list[dict[str, Any]] = []
+    handled_families = set(str(item) for item in repair_report.get("handled_repair_families", []) if item)
+    for issue in critic_report.get("major_issues", []) if isinstance(critic_report.get("major_issues"), list) else []:
+        if not isinstance(issue, dict):
+            continue
+        module = str(issue.get("likely_pipeline_module") or "unknown").strip().lower()
+        area = str(issue.get("area") or "")
+        area_text = f"{area} {issue.get('suggested_test_or_fix') or ''} {issue.get('why_it_matters') or ''}".lower()
+        classification = "scene_specific_once"
+        update_allowed = False
+        reason = "single-scene visual evidence is insufficient for flow, skill, or experience promotion"
+        if module == "camera_or_render":
+            classification = "evaluation_setup_issue"
+            reason = "render/camera criticism should improve evaluation setup, not layout rules"
+        elif module == "asset_generation":
+            classification = "asset_or_run_specific_until_repeated"
+            reason = "asset quality issues need asset QA/regeneration evidence before flow promotion"
+        elif module in {"scene_graph", "unknown"}:
+            classification = "needs_localization"
+            reason = "module ownership is not clear enough for a general rule"
+        elif module in {"window_curtain_solver", "pose", "scale", "density_refiner", "support_solver", "collision_solver"}:
+            if module == "window_curtain_solver" and {"window_curtain_solver"} & handled_families:
+                classification = "candidate_general_flow_issue_requires_repetition"
+                reason = "maps to a deterministic module invariant, but still needs repeated or cross-scene validation"
+            elif module == "pose" and {"retuck_workstation_chairs", "generic_set_yaw", "generic_move_object"} & handled_families:
+                classification = "candidate_general_flow_issue_requires_repetition"
+                reason = "pose issue was repairable, but promotion needs repeated evidence beyond this scene"
+            elif module == "scale" and "bed" in area_text and "bed_depth_scale" in handled_families:
+                classification = "scene_specific_parameter_repair"
+                reason = "bed depth was useful as a runtime repair, but exact scale limits are scene/reference dependent"
+            else:
+                classification = "scene_specific_once"
+                reason = "critic issue names a module but was not tied to a validated reusable invariant"
+        item = {
+            "rank": issue.get("rank"),
+            "area": issue.get("area"),
+            "severity": issue.get("severity"),
+            "likely_pipeline_module": module,
+            "generality": classification,
+            "flow_or_skill_update_allowed": update_allowed,
+            "reason": reason,
+        }
+        issue_assessments.append(item)
+        if classification == "candidate_general_flow_issue_requires_repetition":
+            candidate_general.append(item)
+        elif classification in {"evaluation_setup_issue", "asset_or_run_specific_until_repeated", "needs_localization"}:
+            unsupported.append(item)
+        else:
+            scene_specific.append(item)
+    action_assessments: list[dict[str, Any]] = []
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        generality = _visual_critic_action_generality(action)
+        action_assessments.append(
+            {
+                "action_type": _visual_critic_action_type(action),
+                "object_id": action.get("object_id"),
+                "solver": action.get("solver"),
+                "generality": generality,
+                "flow_or_skill_update_allowed": False,
+                "reason": (
+                    "existing module solver action may become a general candidate only after repeated validated failures"
+                    if generality == "module_invariant_candidate"
+                    else "object-specific edit is a runtime repair only"
+                ),
+            }
+        )
+    return {
+        "schema": "tree_sage_visual_critic_generalization_gate_v1",
+        "policy": "strict_single_scene_no_promotion",
+        "flow_or_skill_update_allowed": False,
+        "experience_update_allowed": False,
+        "auto_code_change_allowed": False,
+        "score_before": round(float(score_before), 6) if score_before is not None else None,
+        "score_after": round(float(score_after), 6) if score_after is not None else None,
+        "critic_improved": bool(improved) if improved is not None else None,
+        "critic_accepted": bool(accepted) if accepted is not None else None,
+        "promotion_requirements": {
+            "minimum_occurrences": 3,
+            "minimum_distinct_references": 2,
+            "requires_clear_module_owner": True,
+            "requires_before_after_critic_improvement": True,
+            "requires_no_collision_or_physics_regression": True,
+            "requires_human_review_before_skill_or_flow_change": True,
+        },
+        "issue_assessments": issue_assessments,
+        "action_assessments": action_assessments,
+        "candidate_general_flow_issue_count": len(candidate_general),
+        "candidate_general_flow_issues": candidate_general,
+        "scene_specific_issue_count": len(scene_specific),
+        "scene_specific_issues": scene_specific,
+        "non_promotable_issue_count": len(unsupported),
+        "non_promotable_issues": unsupported,
+    }
+
+
+def _apply_visual_critic_supported_repairs(
+    plan: dict[str, Any],
+    scene_graph: dict[str, Any],
+    cross_constraints: list[dict[str, Any]],
+    parent: dict[str, str],
+    critic_report: dict[str, Any],
+    planner_report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    report: dict[str, Any] = {
+        "schema": "tree_sage_visual_critic_supported_repair_v1",
+        "fixes": [],
+        "issue_classifications": _classify_visual_critic_issues(critic_report),
+        "planner_report": planner_report,
+        "handled_repair_families": [],
+        "unhandled_issues": [],
+        "unsupported_actions": [],
+        "skipped_actions": [],
+        "ok": True,
+    }
+    actions, merged_planner = _visual_critic_planned_actions(planner_report, critic_report)
+    report["planner_report"] = merged_planner
+    report["planned_action_count"] = len(actions)
+    bed_depth_limited_ids: set[str] = set()
+    retucked_chair_ids: set[str] = set()
+    for action in actions:
+        action_type = _visual_critic_action_type(action)
+        confidence = _safe_float(action.get("confidence"), 0.60)
+        if confidence < 0.35:
+            report["skipped_actions"].append({"action": action, "reason": "low_confidence"})
+            continue
+        before_fix_count = len(report.get("fixes", []))
+        if action_type == "rerun_solver":
+            solver = str(action.get("solver") or "").strip().lower()
+            if solver == "window_curtain_solver":
+                family_report: dict[str, Any] = {
+                    "schema": "tree_sage_visual_critic_window_curtain_repair_v1",
+                    "stage": "visual_critic_supported_repair",
+                    "fixes": [],
+                    "warnings": [],
+                    "ok": True,
+                    "source_action": action,
+                }
+                _separate_window_curtain_panels(plan, scene_graph, family_report)
+                _fit_curtain_panels_to_reference_vertical_extent(plan, scene_graph, family_report)
+                family_report["fix_count"] = len(family_report.get("fixes", []))
+                report.setdefault("window_curtain_repairs", []).append(family_report)
+                report.setdefault("fixes", []).extend(family_report.get("fixes", []))
+                if len(report.get("fixes", [])) > before_fix_count:
+                    report["handled_repair_families"].append("window_curtain_solver")
+                continue
+            if solver == "retuck_workstation_chairs":
+                retuck_report = retuck_workstation_chairs(plan, stage="visual_critic_supported_repair")
+                retuck_report["source_action"] = action
+                report.setdefault("workstation_retuck_repairs", []).append(retuck_report)
+                report.setdefault("fixes", []).extend(retuck_report.get("fixes", []))
+                if len(report.get("fixes", [])) > before_fix_count:
+                    report["handled_repair_families"].append("retuck_workstation_chairs")
+                    for fix in retuck_report.get("fixes", []):
+                        if isinstance(fix, dict) and fix.get("chair_id"):
+                            retucked_chair_ids.add(str(fix.get("chair_id")))
+                continue
+            report["unsupported_actions"].append({"action": action, "reason": f"unsupported_solver:{solver}"})
+            continue
+        if action_type == "limit_bed_depth":
+            _apply_visual_critic_bed_depth_limit(plan, cross_constraints, parent, report)
+            if len(report.get("fixes", [])) > before_fix_count:
+                report["handled_repair_families"].append("bed_depth_scale")
+                for fix in report.get("fixes", [])[before_fix_count:]:
+                    if isinstance(fix, dict) and fix.get("type") == "visual_critic_bed_depth_limit" and fix.get("id"):
+                        bed_depth_limited_ids.add(str(fix.get("id")))
+            continue
+        if action_type == "move_object":
+            if str(action.get("object_id") or "") in retucked_chair_ids:
+                report["skipped_actions"].append(
+                    {"action": action, "reason": "skipped_generic_chair_move_after_retuck_solver"}
+                )
+                continue
+            fix = _visual_critic_move_object(plan, parent, action)
+            if fix:
+                report.setdefault("fixes", []).append(fix)
+                report["handled_repair_families"].append("generic_move_object")
+            continue
+        if action_type == "scale_object_axis":
+            object_id = str(action.get("object_id") or "")
+            if object_id in bed_depth_limited_ids and str(action.get("scene_axis") or "").strip().lower() in {"x", "y"}:
+                report["skipped_actions"].append(
+                    {"action": action, "reason": "skipped_generic_bed_axis_scale_after_bed_depth_limit"}
+                )
+                continue
+            fix = _visual_critic_scale_object_axis(plan, parent, action)
+            if fix:
+                report.setdefault("fixes", []).append(fix)
+                report["handled_repair_families"].append("generic_scale_object_axis")
+            continue
+        if action_type == "set_yaw":
+            if str(action.get("object_id") or "") in retucked_chair_ids:
+                report["skipped_actions"].append(
+                    {"action": action, "reason": "skipped_generic_chair_yaw_after_retuck_solver"}
+                )
+                continue
+            fix = _visual_critic_set_yaw(plan, parent, action)
+            if fix:
+                report.setdefault("fixes", []).append(fix)
+                report["handled_repair_families"].append("generic_set_yaw")
+            continue
+        report["unsupported_actions"].append({"action": action, "reason": f"unsupported_action_type:{action_type}"})
+    if isinstance(planner_report, dict) and isinstance(planner_report.get("unsupported_actions"), list):
+        report["unsupported_actions"].extend(
+            item for item in planner_report.get("unsupported_actions", []) if isinstance(item, dict)
+        )
+    handled = set(report.get("handled_repair_families", []))
+    for item in report.get("issue_classifications", []):
+        module = str(item.get("likely_pipeline_module") or "")
+        if module == "window_curtain_solver" and "window_curtain_solver" in handled:
+            continue
+        if module == "scale" and "bed_depth_scale" in handled and "bed" in str(item.get("area") or "").lower():
+            continue
+        if module == "pose" and {"retuck_workstation_chairs", "generic_set_yaw", "generic_move_object"} & handled:
+            continue
+        report["unhandled_issues"].append(item)
+    report["fix_count"] = len(report.get("fixes", []))
+    report["handled_repair_families"] = sorted(set(str(item) for item in report.get("handled_repair_families", [])))
+    report["handled_repair_family_count"] = len(report.get("handled_repair_families", []))
+    report["unsupported_action_count"] = len(report.get("unsupported_actions", []))
+    report["skipped_action_count"] = len(report.get("skipped_actions", []))
+    return report
+
+
 def _fine_reference_x_overlap_ratio(ref_bboxes: dict[str, list[float]], a_id: str, b_id: str) -> float:
     a = ref_bboxes.get(str(a_id))
     b = ref_bboxes.get(str(b_id))
@@ -26190,6 +28323,39 @@ def _fine_side_wall_curtain_slot_target_span(current_span: float) -> float:
         return float(current_span)
     ratio = _clamp(float(FINE_SPATIAL_ORDER_SIDE_WALL_CURTAIN_SLOT_RATIO), 0.05, 1.0)
     return float(_clamp(float(current_span) * ratio, min_slot, max_slot))
+
+
+def _window_curtain_compact_panel_span(window_span: float, current_target_span: float, tightness: dict[str, Any]) -> tuple[float, dict[str, Any] | None]:
+    tier = str(tightness.get("tier") or "")
+    if tier != "tight":
+        return float(current_target_span), None
+    compact_ratio_cap = _clamp(float(WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MAX_RATIO), 0.05, 1.0)
+    compact_min_span = max(0.05, float(WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MIN_SPAN))
+    compact_span_cap = max(compact_min_span, float(WINDOW_CURTAIN_CLUSTER_TIGHT_PANEL_MAX_SPAN))
+    compact_target = min(
+        float(current_target_span),
+        max(compact_min_span, float(window_span) * compact_ratio_cap),
+        compact_span_cap,
+    )
+    if compact_target >= float(current_target_span) - 1e-6:
+        return float(current_target_span), None
+    return float(compact_target), {
+        "tier": tier,
+        "before_target_panel_span": round(float(current_target_span), 6),
+        "after_target_panel_span": round(float(compact_target), 6),
+        "compact_ratio_cap": round(float(compact_ratio_cap), 6),
+        "compact_min_span": round(float(compact_min_span), 6),
+        "compact_span_cap": round(float(compact_span_cap), 6),
+        "evidence": "tight reference window-curtain clusters should reduce panel tangent span, not only the inter-object gap",
+    }
+
+
+def _fine_side_wall_curtain_decor_reserve(target_span: float) -> float:
+    if target_span <= 0.0:
+        return 0.0
+    ratio = _clamp(float(WINDOW_CURTAIN_CLUSTER_DECOR_RESERVE_RATIO), 0.0, 1.0)
+    reserve_max = max(0.0, float(WINDOW_CURTAIN_CLUSTER_DECOR_RESERVE_MAX))
+    return min(float(target_span) * ratio, reserve_max)
 
 
 def _fine_reference_frontness_signal(
@@ -26535,17 +28701,23 @@ def _fine_side_wall_protected_window_intervals(
                 if after_target_span is not None
                 else None,
                 "reserve_before": round(
-                    float(before_target_span + assembly_gap),
+                    float(_fine_side_wall_curtain_decor_reserve(before_target_span) + assembly_gap),
                     6,
                 )
                 if before_target_span is not None
                 else 0.0,
                 "reserve_after": round(
-                    float(after_target_span + assembly_gap),
+                    float(_fine_side_wall_curtain_decor_reserve(after_target_span) + assembly_gap),
                     6,
                 )
                 if after_target_span is not None
                 else 0.0,
+                "decor_reserve_policy": {
+                    "mode": "compact_curtain_soft_reserve",
+                    "ratio": round(float(WINDOW_CURTAIN_CLUSTER_DECOR_RESERVE_RATIO), 6),
+                    "max": round(float(WINDOW_CURTAIN_CLUSTER_DECOR_RESERVE_MAX), 6),
+                    "evidence": "Curtain panels are solved as a tight fixture; wall decor slotting should not force the dresser to reserve a full curtain-panel width.",
+                },
             }
         )
     intervals.sort(key=lambda item: (float(item["span_y"][0]), str(item.get("object_id") or "")))
@@ -26562,8 +28734,8 @@ def _fine_side_wall_interval_clear(
         span = interval.get("span_y") if isinstance(interval.get("span_y"), list) else []
         if len(span) < 2:
             continue
-        protected_low = float(span[0]) - float(clearance)
-        protected_high = float(span[1]) + float(clearance)
+        protected_low = float(span[0]) - max(0.0, _safe_float(interval.get("reserve_before"), 0.0)) - float(clearance)
+        protected_high = float(span[1]) + max(0.0, _safe_float(interval.get("reserve_after"), 0.0)) + float(clearance)
         if min(float(high), protected_high) - max(float(low), protected_low) > 1e-6:
             return False
     return True
@@ -26634,8 +28806,8 @@ def _fine_side_wall_target_avoiding_intervals(
 
     candidates.sort(
         key=lambda item: (
-            float(item.get("distance_to_current", 0.0) or 0.0),
             float(item.get("storage_extension", 0.0) or 0.0),
+            float(item.get("distance_to_current", 0.0) or 0.0),
             float(item.get("distance_to_preferred", 0.0) or 0.0),
             str(item.get("source") or ""),
         )
@@ -26648,6 +28820,89 @@ def _fine_side_wall_target_avoiding_intervals(
     chosen["distance_to_preferred"] = round(float(chosen.get("distance_to_preferred", 0.0) or 0.0), 6)
     chosen["protected_intervals"] = protected_intervals
     return chosen
+
+
+def _fine_side_wall_storage_bed_front_limit(
+    objects: dict[str, dict[str, Any]],
+    ref_bboxes: dict[str, list[float]],
+    ref_depths: dict[str, dict[str, Any]],
+    storage_id: str,
+) -> dict[str, Any] | None:
+    storage = objects.get(str(storage_id))
+    storage_bbox = ref_bboxes.get(str(storage_id))
+    if not storage or not storage_bbox:
+        return None
+    beds = [obj for obj in objects.values() if _is_bed_or_sofa_object(obj)]
+    if len(beds) != 1:
+        return None
+    bed = beds[0]
+    bed_id = str(bed.get("id") or "")
+    bed_bbox = ref_bboxes.get(bed_id)
+    if not bed_bbox:
+        return None
+    bbox_bottom_gap = abs(float(bed_bbox[3]) - float(storage_bbox[3]))
+    bed_depth = ref_depths.get(bed_id, {})
+    storage_depth = ref_depths.get(str(storage_id), {})
+    depth_gap = (
+        abs(_safe_float(bed_depth.get("frontness"), 0.0) - _safe_float(storage_depth.get("frontness"), 0.0))
+        if isinstance(bed_depth, dict) and isinstance(storage_depth, dict)
+        else 1.0
+    )
+    if bbox_bottom_gap > 0.065 and depth_gap > 0.38:
+        return None
+    bed_min, _bed_max = _bbox_for_object(bed)
+    return {
+        "bed_id": bed_id,
+        "bed_front_y": round(float(bed_min[1]), 6),
+        "reference_bbox_bottom_gap": round(float(bbox_bottom_gap), 6),
+        "reference_depth_frontness_gap": round(float(depth_gap), 6),
+    }
+
+
+def _fine_side_wall_limit_decor_target_by_bed_front(
+    target: dict[str, Any],
+    decor_span: float,
+    protected_intervals: list[dict[str, Any]],
+    bed_front_limit: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not bed_front_limit:
+        return target
+    span = target.get("target_span_y") if isinstance(target.get("target_span_y"), list) else []
+    if len(span) < 2:
+        return target
+    target_low = float(span[0])
+    target_high = float(span[1])
+    span_size = max(float(decor_span), target_high - target_low)
+    if span_size <= 0.0:
+        return target
+    desired_low = float(bed_front_limit.get("bed_front_y", target_low) or target_low) - 0.035
+    max_low = float("inf")
+    source = str(target.get("source") or "")
+    interval_object_id = str(target.get("interval_object_id") or "")
+    if source == "before_protected_window":
+        for interval in protected_intervals:
+            if str(interval.get("object_id") or "") != interval_object_id:
+                continue
+            interval_span = interval.get("span_y") if isinstance(interval.get("span_y"), list) else []
+            if len(interval_span) >= 2:
+                reserve_before = max(0.0, _safe_float(interval.get("reserve_before"), 0.0))
+                max_low = min(
+                    max_low,
+                    float(interval_span[0]) - reserve_before - max(float(FINE_SPATIAL_ORDER_SCENE_CLEARANCE), 0.045) - span_size,
+                )
+    if not math.isfinite(max_low):
+        max_low = desired_low
+    limited_low = min(max(target_low, desired_low), max_low)
+    if limited_low <= target_low + 1e-6:
+        return target
+    limited = dict(target)
+    limited["target_span_y"] = [round(float(limited_low), 6), round(float(limited_low + span_size), 6)]
+    limited["target_y"] = round(float(limited_low + span_size / 2.0), 6)
+    limited["bed_front_limit"] = bed_front_limit
+    limited["pre_bed_front_limit_target"] = target
+    limited["storage_extension"] = None
+    limited["source"] = f"{source}:bed_front_limited"
+    return limited
 
 
 def _fine_side_wall_edge_residuals(
@@ -26737,6 +28992,12 @@ def _fine_side_wall_edge_residuals(
                 storage_high=float(storage_max[1]),
                 protected_intervals=protected_intervals,
                 room_length=float(room.get("length", 0.0) or 0.0),
+            )
+            target = _fine_side_wall_limit_decor_target_by_bed_front(
+                target,
+                decor_span,
+                protected_intervals,
+                _fine_side_wall_storage_bed_front_limit(objects, ref_bboxes, ref_depths, storage_id),
             )
             target_span = target.get("target_span_y") if isinstance(target.get("target_span_y"), list) else []
             target_low = float(target_span[0]) - 0.015 if len(target_span) >= 2 else float(storage_min[1])
@@ -28279,14 +30540,7 @@ print(json.dumps({{"create": create_result, "simulate": simulate_result}}, defau
 """
     env = os.environ.copy()
     env["SAGE_SIM_BACKEND"] = "mujoco"
-    default_server_path = Path(__file__).resolve().parents[1] / "server"
-    server_pythonpath = os.environ.get("SAGE_SERVER_PYTHONPATH", str(default_server_path))
-    existing_pythonpath = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = (
-        server_pythonpath
-        if not existing_pythonpath
-        else os.pathsep.join([server_pythonpath, existing_pythonpath])
-    )
+    env["PYTHONPATH"] = "/home/xy/SAGE/sage/server"
     try:
         proc = subprocess.run(
             [python_bin, "-c", code],
@@ -29259,6 +31513,7 @@ def _move_direct_supported_children(
             child
             for child in objects.values()
             if str(child.get("support_id") or "") == current_support_id and str(child.get("id") or "") not in moved_set
+            and not _is_hanging_object(child)
         ]
         for child in direct_children:
             child_id = str(child.get("id") or "")
@@ -29538,6 +31793,24 @@ def _same_side_wall_depth_order_fix(
             return _clamp(float(bbox[3]), 0.0, 1.0), 0.42
         return None
 
+    def stacked_side_wall_floor_fixture_pair(wall_object_id: str, floor_id: str) -> dict[str, Any] | None:
+        wall_bbox = ref_bboxes.get(wall_object_id)
+        floor_bbox = ref_bboxes.get(floor_id)
+        if not wall_bbox or not floor_bbox:
+            return None
+        overlap_x = max(0.0, min(float(wall_bbox[2]), float(floor_bbox[2])) - max(float(wall_bbox[0]), float(floor_bbox[0])))
+        min_width = max(1e-6, min(float(wall_bbox[2]) - float(wall_bbox[0]), float(floor_bbox[2]) - float(floor_bbox[0])))
+        overlap_ratio = overlap_x / min_width
+        floor_lower_gap = float(floor_bbox[3]) - float(wall_bbox[3])
+        floor_center_lower_gap = ((float(floor_bbox[1]) + float(floor_bbox[3])) - (float(wall_bbox[1]) + float(wall_bbox[3]))) / 2.0
+        if overlap_ratio >= 0.16 and floor_lower_gap >= 0.18 and floor_center_lower_gap >= 0.16:
+            return {
+                "overlap_ratio": round(float(overlap_ratio), 6),
+                "floor_lower_gap": round(float(floor_lower_gap), 6),
+                "floor_center_lower_gap": round(float(floor_center_lower_gap), 6),
+            }
+        return None
+
     floor_by_wall: dict[str, list[str]] = {}
     wall_attached_by_wall: dict[str, list[str]] = {}
     for object_id, obj in objects.items():
@@ -29562,6 +31835,23 @@ def _same_side_wall_depth_order_fix(
                 floor_obj = objects.get(floor_id)
                 floor_depth = depth_frontness(floor_id)
                 if not floor_obj or not floor_depth:
+                    continue
+                stacked_pair = stacked_side_wall_floor_fixture_pair(wall_object_id, floor_id)
+                if stacked_pair:
+                    report.setdefault("warnings", []).append(
+                        {
+                            "stage": report.get("stage"),
+                            "type": "same_side_wall_reference_depth_order_skipped_stacked_floor_fixture",
+                            "wall_object_id": wall_object_id,
+                            "floor_id": floor_id,
+                            "wall_id": wall_id,
+                            "evidence": stacked_pair,
+                            "reason": (
+                                "A side-wall floor table/storage object that appears substantially lower in the reference "
+                                "than a same-wall fixture is a foreground-under/near-window stack, not a wall-depth queue."
+                            ),
+                        }
+                    )
                     continue
                 frontness_gap = wall_depth[0] - floor_depth[0]
                 if abs(frontness_gap) < 0.12:
@@ -29728,6 +32018,22 @@ def _side_wall_storage_bed_front_depth_fix(
                     depth_contradicts_window_alignment = (
                         storage_frontness - window_frontness >= 0.30
                         and storage_lower_than_window >= 0.16
+                    )
+                if window_bbox and not depth_contradicts_window_alignment:
+                    storage_lower_than_window = float(bbox[3]) - float(window_bbox[3])
+                    storage_center_lower_than_window = (
+                        (float(bbox[1]) + float(bbox[3])) - (float(window_bbox[1]) + float(window_bbox[3]))
+                    ) / 2.0
+                    storage_frontness = _safe_float(depth.get("frontness"), float(bbox[3]))
+                    window_frontness = (
+                        _safe_float(window_depth.get("frontness"), 0.0)
+                        if isinstance(window_depth, dict)
+                        else _clamp(float(window_bbox[3]), 0.0, 1.0)
+                    )
+                    depth_contradicts_window_alignment = (
+                        storage_lower_than_window >= 0.24
+                        and storage_center_lower_than_window >= 0.20
+                        and storage_frontness - window_frontness >= 0.20
                     )
                 if depth_contradicts_window_alignment:
                     report.setdefault("warnings", []).append(
@@ -30200,9 +32506,37 @@ def _shift_bed_left_if_right_branch_too_close(
             desired_gap_x = _clamp(ref_gap_x * float(room.get("width", 0.0) or 0.0) * 0.95, 0.28, 1.15)
             delta_x = desired_gap_x - scene_gap_x
             if abs(delta_x) > 0.12:
+                # Image-space gaps between side-wall storage/table objects and
+                # the bedside table are weak lateral evidence in oblique views.
+                # They can justify pulling an over-right bed branch back left,
+                # but should not push a central bed branch rightward and fight
+                # the bed-center prior over repeated consistency passes.
+                requested_delta_x = _clamp(delta_x, -0.30, 0.70)
+                if requested_delta_x > 0.0:
+                    center_limit = float(room.get("width", 0.0) or 0.0) * 0.48
+                    available_right_shift = max(0.0, center_limit - current_x)
+                    if available_right_shift <= 0.04:
+                        report.setdefault("warnings", []).append(
+                            {
+                                "stage": report.get("stage"),
+                                "type": "bed_visual_cluster_lateral_reference_alignment_suppressed",
+                                "id": bed_id,
+                                "reason": "left_storage_gap_would_push_central_bed_right",
+                                "requested_delta_x": round(float(requested_delta_x), 6),
+                                "center_limit_x": round(float(center_limit), 6),
+                                "current_x": round(float(current_x), 6),
+                                "bedside_id": bedside_id,
+                                "storage_id": storage_id,
+                                "reference_gap_x": round(float(ref_gap_x), 6),
+                                "scene_gap_x": round(float(scene_gap_x), 6),
+                                "desired_scene_gap_x": round(float(desired_gap_x), 6),
+                            }
+                        )
+                        continue
+                    requested_delta_x = min(requested_delta_x, available_right_shift)
                 dx_candidates.append(
                     (
-                        _clamp(delta_x, -0.30, 0.70),
+                        requested_delta_x,
                         "left_storage_to_bedside_reference_gap",
                         {
                             "bedside_id": bedside_id,
@@ -32309,6 +34643,176 @@ def _window_curtain_tangent_span(obj: dict[str, Any], tangent_axis: int) -> floa
     return max(float(span), 1e-6)
 
 
+def _align_window_curtain_cluster_vertical_edges(
+    plan: dict[str, Any],
+    scene_graph: dict[str, Any],
+    report: dict[str, Any],
+) -> None:
+    room = plan.get("room") if isinstance(plan.get("room"), dict) else {}
+    room_height = _safe_float(room.get("height"), 0.0) if room else 0.0
+    if room_height <= 0.0:
+        return
+    objects = {str(obj.get("id")): obj for obj in plan.get("objects", []) if isinstance(obj, dict) and obj.get("id")}
+    if not objects:
+        return
+    ref_bboxes = _reference_bboxes_by_object(scene_graph)
+    windows = [
+        obj
+        for obj in objects.values()
+        if _functional_cluster_is_window_object(obj)
+        and not _is_curtain_panel_object(obj)
+        and not _is_curtain_rod_object(obj)
+        and str(obj.get("support_id") or "") in VIRTUAL_WALLS
+    ]
+    for window in windows:
+        wall_id = str(window.get("support_id") or "")
+        window_bbox = ref_bboxes.get(str(window.get("id") or ""))
+
+        def is_near_window_fixture(obj: dict[str, Any]) -> bool:
+            obj_bbox = ref_bboxes.get(str(obj.get("id") or ""))
+            if not window_bbox or not obj_bbox:
+                return len(windows) == 1
+            wx = (float(window_bbox[0]) + float(window_bbox[2])) / 2.0
+            wy = (float(window_bbox[1]) + float(window_bbox[3])) / 2.0
+            ox = (float(obj_bbox[0]) + float(obj_bbox[2])) / 2.0
+            oy = (float(obj_bbox[1]) + float(obj_bbox[3])) / 2.0
+            return abs(ox - wx) <= 0.45 and abs(oy - wy) <= 0.45
+
+        curtains = [
+            obj
+            for obj in objects.values()
+            if obj is not window
+            and _is_curtain_panel_object(obj)
+            and str(obj.get("support_id") or "") == wall_id
+        ]
+        if len(curtains) < 2:
+            curtains.extend(
+                obj
+                for obj in objects.values()
+                if obj is not window
+                and _is_curtain_panel_object(obj)
+                and str(obj.get("support_id") or "") != wall_id
+                and is_near_window_fixture(obj)
+            )
+        if len(curtains) < 2:
+            continue
+
+        def curtain_sort_key(obj: dict[str, Any]) -> tuple[float, str]:
+            bbox = ref_bboxes.get(str(obj.get("id") or ""))
+            if bbox:
+                return ((float(bbox[0]) + float(bbox[2])) / 2.0, str(obj.get("id") or ""))
+            text = str(obj.get("id") or "").lower()
+            if "left" in text:
+                return (-1.0, text)
+            if "right" in text:
+                return (2.0, text)
+            return (0.5, text)
+
+        selected = [sorted(curtains, key=curtain_sort_key)[0], sorted(curtains, key=curtain_sort_key)[-1]]
+        rods = [
+            obj
+            for obj in objects.values()
+            if obj is not window
+            and _is_curtain_rod_object(obj)
+            and (str(obj.get("support_id") or "") == wall_id or is_near_window_fixture(obj))
+        ]
+        members = [window, *selected, *rods]
+
+        def member_snapshot(member: dict[str, Any]) -> dict[str, Any]:
+            snapshot = _plan_object_snapshot(member)
+            dims = member.get("dimensions") if isinstance(member.get("dimensions"), dict) else {}
+            snapshot["dimensions"] = {
+                key: round(float(value), 6)
+                for key, value in dims.items()
+                if isinstance(value, (int, float))
+            }
+            return snapshot
+
+        before_by_id = {str(member.get("id") or ""): member_snapshot(member) for member in members}
+        window_dims = window.setdefault("dimensions", {})
+        window_top = _safe_float(window.get("z"), 0.0) + _safe_float(window_dims.get("height"), 0.0)
+        if window_top <= 0.0:
+            continue
+        curtain_top_offset = 0.04
+        if window_bbox:
+            curtain_tops = [
+                float(bbox[1])
+                for curtain in selected
+                for bbox in [ref_bboxes.get(str(curtain.get("id") or ""))]
+                if bbox
+            ]
+            if curtain_tops:
+                # Image y grows downward, so a smaller curtain y1 means the curtain starts above the window.
+                reference_top_delta = max(0.0, float(window_bbox[1]) - min(curtain_tops))
+                curtain_top_offset = _clamp(
+                    room_height * reference_top_delta,
+                    0.0,
+                    float(WINDOW_CURTAIN_CLUSTER_TOP_EDGE_MAX_OFFSET),
+                )
+        target_top = _clamp(
+            window_top + curtain_top_offset,
+            float(WINDOW_CURTAIN_CLUSTER_MIN_PANEL_HEIGHT) + 0.04,
+            room_height - 0.08,
+        )
+        current_bottoms = [_safe_float(curtain.get("z"), 0.0) for curtain in selected]
+        target_bottom = min(current_bottoms) if current_bottoms else max(0.04, target_top - 1.4)
+        min_panel_height = min(
+            room_height - 0.10,
+            max(float(WINDOW_CURTAIN_CLUSTER_MIN_PANEL_HEIGHT), room_height * 0.42),
+        )
+        if target_top - target_bottom < min_panel_height:
+            target_bottom = max(0.04, target_top - min_panel_height)
+        target_height = _clamp(target_top - target_bottom, min_panel_height, room_height - 0.10)
+        target_bottom = _clamp(target_top - target_height, 0.04, room_height - target_height - 0.04)
+        target_height = target_top - target_bottom
+        for curtain in selected:
+            dims = curtain.setdefault("dimensions", {})
+            dims["height"] = float(target_height)
+            dims["length"] = min(
+                _safe_float(dims.get("length"), WINDOW_CURTAIN_CLUSTER_PANEL_THICKNESS),
+                float(WINDOW_CURTAIN_CLUSTER_PANEL_THICKNESS),
+            )
+            curtain["z"] = float(target_bottom)
+            curtain["placement_type"] = "attached_to_wall"
+            curtain["support_id"] = wall_id
+            curtain["yaw"] = _wall_semantic_yaw(wall_id)
+            curtain["footprint_yaw_offset_degrees"] = _wall_footprint_offset_for_object(wall_id, curtain)
+            _clamp_wall_attached_object(curtain, room, wall_id)
+        for rod in rods:
+            dims = rod.setdefault("dimensions", {})
+            dims["height"] = _clamp(_safe_float(dims.get("height"), 0.045), 0.025, 0.08)
+            rod["z"] = min(room_height - float(dims["height"]) - 0.04, target_top + 0.035)
+            rod["placement_type"] = "attached_to_wall"
+            rod["support_id"] = wall_id
+            rod["yaw"] = _wall_semantic_yaw(wall_id)
+            rod["footprint_yaw_offset_degrees"] = _wall_footprint_offset_for_object(wall_id, rod)
+            _clamp_wall_attached_object(rod, room, wall_id)
+        after_by_id = {str(member.get("id") or ""): member_snapshot(member) for member in members}
+        changed = {
+            object_id: {"before": before_by_id[object_id], "after": after}
+            for object_id, after in after_by_id.items()
+            if object_id and before_by_id.get(object_id) != after
+        }
+        if changed:
+            report.setdefault("fixes", []).append(
+                {
+                    "stage": report.get("stage"),
+                    "type": "window_curtain_cluster_vertical_edge_lock",
+                    "window_id": window.get("id"),
+                    "curtain_ids": [str(curtain.get("id") or "") for curtain in selected],
+                    "rod_ids": [str(rod.get("id") or "") for rod in rods],
+                    "wall_id": wall_id,
+                    "window_top_z": round(float(window_top), 6),
+                    "target_curtain_top_z": round(float(target_top), 6),
+                    "target_curtain_bottom_z": round(float(target_bottom), 6),
+                    "target_curtain_height": round(float(target_height), 6),
+                    "curtain_top_offset": round(float(curtain_top_offset), 6),
+                    "changed": changed,
+                    "evidence": "Window-curtain clusters should keep both curtain top edges close to the window top edge, with paired panels sharing one height and bottom line.",
+                }
+            )
+
+
 def _separate_window_curtain_panels(
     plan: dict[str, Any],
     scene_graph: dict[str, Any],
@@ -32443,6 +34947,17 @@ def _separate_window_curtain_panels(
             float(WINDOW_CURTAIN_CLUSTER_PANEL_MIN_SPAN),
             float(WINDOW_CURTAIN_CLUSTER_PANEL_MAX_SPAN),
         )
+        tightness = _window_curtain_reference_tightness(
+            str(window.get("id") or ""),
+            str(low_curtain.get("id") or ""),
+            str(high_curtain.get("id") or ""),
+            ref_bboxes,
+        )
+        target_panel_span, panel_compaction = _window_curtain_compact_panel_span(
+            window_span,
+            target_panel_span,
+            tightness,
+        )
         for curtain in selected:
             dims = curtain.setdefault("dimensions", {})
             # For wall-mounted curtain panels in this pipeline, width is the wall-tangent span.
@@ -32455,12 +34970,6 @@ def _separate_window_curtain_panels(
 
         low_span = _window_curtain_tangent_span(low_curtain, tangent_axis)
         high_span = _window_curtain_tangent_span(high_curtain, tangent_axis)
-        tightness = _window_curtain_reference_tightness(
-            str(window.get("id") or ""),
-            str(low_curtain.get("id") or ""),
-            str(high_curtain.get("id") or ""),
-            ref_bboxes,
-        )
         gap = _clamp(
             _safe_float(tightness.get("scene_gap"), WINDOW_CURTAIN_CLUSTER_MEDIUM_GAP),
             0.0,
@@ -32486,6 +34995,34 @@ def _separate_window_curtain_panels(
             window_center = _clamp(requested_window_center, min_center, max_center)
         else:
             window_center = room_extent / 2.0
+        window_center_bias: dict[str, Any] | None = None
+        if wall_id in {"wall_west", "wall_east"} and str(tightness.get("tier") or "") == "tight" and min_center <= max_center:
+            has_same_wall_storage = any(
+                obj is not window
+                and str(obj.get("placement_type") or "") == "floor"
+                and str(obj.get("support_id") or "") == wall_id
+                and _is_floor_storage_or_table_branch_object(obj)
+                and not _is_bedside_table_object(obj)
+                for obj in objects.values()
+            )
+            has_same_wall_decor = any(
+                obj is not window
+                and str(obj.get("placement_type") or "") == "attached_to_wall"
+                and str(obj.get("support_id") or "") == wall_id
+                and not _fine_spatial_order_is_protected_assembly_member(obj)
+                and not _is_wall_door_object(obj)
+                for obj in objects.values()
+            )
+            if has_same_wall_storage and has_same_wall_decor:
+                biased_center = _clamp(max(float(window_center), float(room_extent) * 0.75), min_center, max_center)
+                if biased_center > float(window_center) + 1e-6:
+                    window_center_bias = {
+                        "before": round(float(window_center), 6),
+                        "after": round(float(biased_center), 6),
+                        "room_fraction": 0.75,
+                        "reason": "same_wall_storage_and_wall_decor_need_compact_inner_window_slot",
+                    }
+                    window_center = float(biased_center)
         low_center = window_center - window_span / 2.0 - gap - low_span / 2.0
         high_center = window_center + window_span / 2.0 + gap + high_span / 2.0
 
@@ -32546,6 +35083,8 @@ def _separate_window_curtain_panels(
                     "target_panel_span": round(float(target_panel_span), 6),
                     "reference_panel_ratio": round(float(panel_ratio), 6),
                     "tightness": tightness,
+                    "panel_compaction": panel_compaction,
+                    "window_center_bias": window_center_bias,
                     "target_gap": round(float(gap), 6),
                     "left_gap": round(float((window_center - window_span / 2.0) - (low_center + low_span / 2.0)), 6),
                     "right_gap": round(float((high_center - high_span / 2.0) - (window_center + window_span / 2.0)), 6),
@@ -32648,6 +35187,7 @@ def _fit_curtain_panels_to_reference_vertical_extent(
                     "evidence": "Curtain panels should use the reference bbox vertical extent; generic wall/hanging defaults make them too short.",
                 }
             )
+    _align_window_curtain_cluster_vertical_edges(plan, scene_graph, report)
 
 
 def _align_floor_covering_underlay_supports(
@@ -33364,6 +35904,20 @@ def apply_reference_consistency_layout_refinements(
         return report
     consistency = scene_graph.get("_reference_consistency_refiner") if isinstance(scene_graph.get("_reference_consistency_refiner"), dict) else {}
     branches = consistency.get("side_wall_branches") if isinstance(consistency.get("side_wall_branches"), list) else []
+    early_window_curtain_report: dict[str, Any] = {
+        "schema": "tree_sage_window_curtain_assembly_pre_side_wall_branch_v1",
+        "enabled": True,
+        "stage": f"{stage}_pre_side_wall_branch",
+        "fixes": [],
+        "warnings": [],
+        "ok": True,
+    }
+    _separate_window_curtain_panels(plan, scene_graph, early_window_curtain_report)
+    _fit_curtain_panels_to_reference_vertical_extent(plan, scene_graph, early_window_curtain_report)
+    early_window_curtain_report["fix_count"] = len(early_window_curtain_report.get("fixes", []))
+    report["pre_side_wall_window_curtain_assembly"] = early_window_curtain_report
+    report["fixes"].extend(early_window_curtain_report.get("fixes", []))
+    report["warnings"].extend(early_window_curtain_report.get("warnings", []))
     _reference_consistency_fix_bed_against_back_wall(plan, cross_constraints, parent, report)
     _align_multi_bed_wall_rows(plan, scene_graph, cross_constraints, parent, report)
     for branch in branches:
@@ -33470,6 +36024,77 @@ def _rebuild_flow2_validation_state(
         "scene_hypergraph_validation_report": scene_hypergraph_validation_report,
         "spatial_order_repair_report": spatial_order_repair_report,
     }
+
+
+def _required_spatial_order_repair_residuals(report: dict[str, Any]) -> list[dict[str, Any]]:
+    residuals: list[dict[str, Any]] = []
+    if not isinstance(report, dict):
+        return residuals
+    for check in report.get("group_checks", []) if isinstance(report.get("group_checks"), list) else []:
+        if not isinstance(check, dict):
+            continue
+        if check.get("soft_reason") or check.get("view_condition_soft_wall_plane_order"):
+            continue
+        repair_skip_reason = str(check.get("repair_skip_reason") or "")
+        if repair_skip_reason in {"soft_wall_plane_order", "side_wall_image_left_right_is_perspective_tangent_cue"}:
+            continue
+        after_keys = ("violations_after", "pairwise_violations_after", "gap_violations_after")
+        before_keys = ("violations_before", "pairwise_violations_before", "gap_violations_before")
+        keys = after_keys if any(key in check for key in after_keys) else before_keys
+        violations = []
+        for key in keys:
+            value = check.get(key)
+            if isinstance(value, list) and value:
+                violations.extend(value)
+        if not violations:
+            continue
+        residuals.append(
+            {
+                "group_id": check.get("group_id"),
+                "scope": check.get("scope"),
+                "axis": check.get("axis"),
+                "scene_axis": check.get("scene_axis"),
+                "expected_order": check.get("expected_order"),
+                "current_order": check.get("current_order_after", check.get("current_order_before")),
+                "violation_count": len(violations),
+                "sample_violations": violations[:3],
+            }
+        )
+    return residuals
+
+
+def _apply_final_ceiling_hanging_write_guard(
+    plan: dict[str, Any],
+    scene_graph: dict[str, Any],
+    support_tree: dict[str, Any],
+    parent: dict[str, str],
+    relation_to_parent: dict[str, str],
+    cross_constraints: list[dict[str, Any]],
+    asset_registry: dict[str, Any],
+    support_surface_application_report: dict[str, Any],
+    *,
+    stage: str,
+    branch_candidate_k: int,
+    margin: float,
+) -> dict[str, Any] | None:
+    fixes = _normalize_ceiling_hanging_objects(plan)
+    if not fixes:
+        return None
+    support_surface_application_report.setdefault("fixes", []).extend(
+        f"{stage}: {fix.get('id')}: normalized ceiling hanging fixture before scene_plan write"
+        for fix in fixes
+    )
+    return _rebuild_flow2_validation_state(
+        plan,
+        scene_graph,
+        support_tree,
+        parent,
+        relation_to_parent,
+        cross_constraints,
+        asset_registry,
+        branch_candidate_k,
+        margin,
+    )
 
 
 def _apply_reference_consistency_guard_pass(
@@ -34153,7 +36778,7 @@ def run_final_layout_polish(
         if str(obj.get("placement_type", "floor")) == "floor"
         and str(parent.get(str(obj.get("id") or "")) or obj.get("support_id") or "floor") == "floor"
     )
-    large_scene_guard = object_count >= 22 or (object_count >= 18 and floor_root_count >= 10)
+    large_scene_guard = object_count >= 17 or (object_count >= 16 and floor_root_count >= 8)
     if large_scene_guard:
         max_iterations = min(max(1, int(max_iterations)), 1)
         branch_execution_plan = None
@@ -34899,6 +37524,83 @@ def _is_generic_parametric_window(obj: dict[str, Any]) -> bool:
     )
 
 
+def _is_generic_parametric_simple_wall_door(obj: dict[str, Any]) -> bool:
+    return _expects_light_neutral_wall_door_asset(obj)
+
+
+def _is_generic_parametric_curtain_panel(obj: dict[str, Any]) -> bool:
+    identity = f"{obj.get('id', '')} {obj.get('category', '')}".lower().replace("_", " ")
+    text = (
+        f"{obj.get('id', '')} {obj.get('category', '')} {obj.get('description', '')} "
+        f"{obj.get('asset_prompt', '')}"
+    ).lower().replace("_", " ")
+    if "rod" in identity or "curtain rod" in identity:
+        return False
+    if not any(keyword in text for keyword in ("curtain", "drape", "drapery")):
+        return False
+    return _is_curtain_panel_object(obj) or str(obj.get("placement_type") or "") in {"attached_to_wall", "hanging"}
+
+
+def _generic_curtain_rgba(obj: dict[str, Any]) -> tuple[int, int, int, int]:
+    text = (
+        f"{obj.get('id', '')} {obj.get('category', '')} {obj.get('description', '')} "
+        f"{obj.get('asset_prompt', '')}"
+    ).lower().replace("_", " ")
+    if any(keyword in text for keyword in ("olive", "green", "sage")):
+        return (89, 105, 66, 255)
+    if any(keyword in text for keyword in ("beige", "ivory", "cream", "linen", "tan")):
+        return (202, 190, 166, 255)
+    if any(keyword in text for keyword in ("white", "sheer")):
+        return (224, 222, 212, 245)
+    if any(keyword in text for keyword in ("blue", "navy")):
+        return (72, 91, 119, 255)
+    return (130, 126, 104, 255)
+
+
+def _make_generic_curtain_panel_asset(obj: dict[str, Any]) -> trimesh.Scene:
+    dimensions = obj.get("dimensions") if isinstance(obj.get("dimensions"), dict) else {}
+    width = _clamp(float(dimensions.get("width", 0.66) or 0.66), 0.28, 1.10)
+    depth = _clamp(float(dimensions.get("length", WINDOW_CURTAIN_CLUSTER_PANEL_THICKNESS) or WINDOW_CURTAIN_CLUSTER_PANEL_THICKNESS), 0.024, 0.075)
+    height = _clamp(float(dimensions.get("height", 1.9) or 1.9), 0.85, 2.60)
+    color = _generic_curtain_rgba(obj)
+    darker = tuple(max(0, int(channel * 0.78)) for channel in color[:3]) + (255,)
+    lighter = tuple(min(255, int(channel * 1.12)) for channel in color[:3]) + (255,)
+    scene = trimesh.Scene()
+    _generic_parametric_add_box(
+        scene,
+        "continuous_fabric_backing",
+        (width, depth * 0.52, height),
+        (0.0, 0.0, height * 0.5),
+        color,
+    )
+    pleat_count = 7
+    usable_width = width * 0.92
+    for index, x in enumerate(np.linspace(-usable_width / 2.0, usable_width / 2.0, pleat_count)):
+        rgba = lighter if index % 2 == 0 else darker
+        _generic_parametric_add_box(
+            scene,
+            f"vertical_pleat_{index}",
+            (max(width * 0.045, 0.018), depth * 1.22, height * 0.96),
+            (float(x), -depth * 0.20, height * 0.49),
+            rgba,
+        )
+    _generic_parametric_add_box(
+        scene,
+        "top_gathered_band",
+        (width * 1.02, depth * 1.15, max(height * 0.055, 0.045)),
+        (0.0, -depth * 0.16, height - max(height * 0.028, 0.022)),
+        darker,
+    )
+    _generic_parametric_add_box(
+        scene,
+        "bottom_hem",
+        (width * 0.98, depth * 0.90, max(height * 0.032, 0.025)),
+        (0.0, -depth * 0.12, max(height * 0.018, 0.014)),
+        darker,
+    )
+    return scene
+
+
 def _make_generic_tabletop_decor_asset(obj: dict[str, Any]) -> trimesh.Scene:
     dimensions = obj.get("dimensions") if isinstance(obj.get("dimensions"), dict) else {}
     width = _clamp(float(dimensions.get("width", 0.16) or 0.16), 0.08, 0.28)
@@ -34946,7 +37648,12 @@ def _make_generic_tabletop_decor_asset(obj: dict[str, Any]) -> trimesh.Scene:
 def route_asset_fixed_policy(obj: dict[str, Any]) -> dict[str, Any]:
     object_id = str(obj.get("id") or "")
     text = _category_text(obj)
-    has_factory = object_id in PARAMETRIC_ASSET_FACTORIES or _is_generic_parametric_window(obj)
+    has_factory = (
+        object_id in PARAMETRIC_ASSET_FACTORIES
+        or _is_generic_parametric_window(obj)
+        or _is_generic_parametric_curtain_panel(obj)
+        or _is_generic_parametric_simple_wall_door(obj)
+    )
     if not has_factory:
         return {
             "object_id": object_id,
@@ -34956,7 +37663,7 @@ def route_asset_fixed_policy(obj: dict[str, Any]) -> dict[str, Any]:
             "allowed_generators": ["trellis2"],
             "forbidden_generators": [],
         }
-    if any(keyword in text for keyword in PARAMETRIC_ASSET_DENY_KEYWORDS):
+    if any(keyword in text for keyword in PARAMETRIC_ASSET_DENY_KEYWORDS) and not _is_generic_parametric_curtain_panel(obj):
         return {
             "object_id": object_id,
             "route": "trellis2",
@@ -35003,6 +37710,12 @@ def write_parametric_asset(obj: dict[str, Any], asset_dir: Path) -> dict[str, An
         if _is_generic_parametric_window(obj):
             scene = make_parametric_window_asset()
             source = "tree_sage_generic_window_parametric_v1"
+        elif _is_generic_parametric_simple_wall_door(obj):
+            scene = make_parametric_white_double_closet_door_asset()
+            source = "tree_sage_generic_light_neutral_wall_door_parametric_v1"
+        elif _is_generic_parametric_curtain_panel(obj):
+            scene = _make_generic_curtain_panel_asset(obj)
+            source = "tree_sage_generic_curtain_panel_parametric_v1"
         elif _is_generic_parametric_tabletop_decor(obj):
             scene = _make_generic_tabletop_decor_asset(obj)
             source = "tree_sage_generic_tabletop_parametric_v1"
@@ -35015,6 +37728,7 @@ def write_parametric_asset(obj: dict[str, Any], asset_dir: Path) -> dict[str, An
     # Reset any Trellis-derived axis metadata before the new GLB is analyzed/rendered.
     obj["asset_axis_to_z"] = 2
     obj.pop("asset_axis_to_z_sign", None)
+    obj["asset_local_yaw_offset_degrees"] = 0.0
     obj.setdefault("asset_generation", {})["raw_coordinate_frame"] = {
         "source": source,
         "vertical_axis": "z",
@@ -35043,7 +37757,12 @@ def _forced_regeneration_can_use_parametric(obj: dict[str, Any]) -> bool:
     semantic = _semantic_class(obj)
     role = _semantic_layout_role(obj)
     if object_id not in PARAMETRIC_ASSET_FACTORIES:
-        return _is_generic_parametric_window(obj) or _is_generic_parametric_tabletop_decor(obj)
+        if _is_generic_parametric_curtain_panel(obj):
+            return False
+        return (
+            _is_generic_parametric_window(obj)
+            or _is_generic_parametric_tabletop_decor(obj)
+        )
     is_tabletop_photo = (
         ("framed photo" in identity_without_id or "photo frame" in identity_without_id or "framed picture" in identity_without_id)
         and (role == "tabletop_child" or semantic in {"decor", "tabletop_upright"})
@@ -35219,6 +37938,9 @@ def restore_router_fallback_assets(
                 warning.startswith("component policy violation:")
                 or "wall-attached object does not have a thin footprint axis" in warning
                 or "requires extreme axis compression" in warning
+                or "door asset paint color drift" in warning
+                or "door asset has no readable light neutral paint texture" in warning
+                or "door asset has too few readable light neutral paint pixels" in warning
                 or "lacks a clear broad top surface" in warning
             )
         ]
@@ -35253,16 +37975,16 @@ def restore_router_fallback_assets(
 def _parametric_fallback_blocking_warnings(entry: dict[str, Any]) -> list[str]:
     warnings = [str(item) for item in entry.get("warnings", [])] if isinstance(entry, dict) else []
     return [
-        warning
-        for warning in warnings
-        if (
-            warning.startswith("component policy violation:")
-            or "wall-attached object does not have a thin footprint axis" in warning
-            or "requires extreme axis compression" in warning
-            or "window asset has low pedestal/sill-like geometry" in warning
-            or "window asset has excessive disconnected fragments" in warning
-            or "lacks a clear broad top surface" in warning
-        )
+            warning
+            for warning in warnings
+            if (
+                warning.startswith("component policy violation:")
+                or "wall-attached object does not have a thin footprint axis" in warning
+                or "requires extreme axis compression" in warning
+                or "window asset has low pedestal/sill-like geometry" in warning
+                or "window asset has excessive disconnected fragments" in warning
+                or "lacks a clear broad top surface" in warning
+            )
     ]
 
 
@@ -35312,19 +38034,42 @@ def fallback_failed_trellis_assets_to_parametric(
     objects = [obj for obj in plan.get("objects", []) if isinstance(obj, dict) and obj.get("id")]
     for obj in objects:
         object_id = str(obj.get("id"))
-        if object_id not in PARAMETRIC_ASSET_FACTORIES and not _is_generic_parametric_window(obj):
+        generic_curtain_panel = _is_generic_parametric_curtain_panel(obj)
+        generic_simple_wall_door = _is_generic_parametric_simple_wall_door(obj)
+        if (
+            object_id not in PARAMETRIC_ASSET_FACTORIES
+            and not _is_generic_parametric_window(obj)
+            and not generic_curtain_panel
+            and not generic_simple_wall_door
+        ):
             continue
         text = _category_text(obj)
         simple_wall_door = (
-            any(keyword in text for keyword in ("door", "closet"))
+            generic_simple_wall_door
+            or any(keyword in text for keyword in ("door", "closet"))
             and str(obj.get("placement_type") or "") == "attached_to_wall"
         )
-        if any(keyword in text for keyword in PARAMETRIC_ASSET_DENY_KEYWORDS) and not simple_wall_door:
+        if any(keyword in text for keyword in PARAMETRIC_ASSET_DENY_KEYWORDS) and not (simple_wall_door or generic_curtain_panel):
             continue
         entry = registry_objects.get(object_id, {})
         quality = str(entry.get("quality") or "missing") if isinstance(entry, dict) else "missing"
         blocking_warnings = _parametric_fallback_blocking_warnings(entry if isinstance(entry, dict) else {})
-        if quality == "ok" and not blocking_warnings:
+        force_curtain_panel_fallback = bool(generic_curtain_panel and PARAMETRIC_CURTAIN_PANEL_FALLBACK)
+        if quality == "ok" and not blocking_warnings and not force_curtain_panel_fallback:
+            continue
+        if generic_curtain_panel and not force_curtain_panel_fallback:
+            report["skipped"].append(
+                {
+                    "object_id": object_id,
+                    "quality": quality,
+                    "blocking_warnings": blocking_warnings,
+                    "reason": (
+                        "kept Trellis/reused curtain asset; procedural curtain fallback is disabled unless "
+                        "SAGE_PARAMETRIC_CURTAIN_PANEL_FALLBACK is explicitly enabled because raw-bbox "
+                        "axis-compression warnings can be false positives for Blender-imported glTF curtains"
+                    ),
+                }
+            )
             continue
         if "window" in text and not blocking_warnings:
             report["skipped"].append(
@@ -35349,19 +38094,27 @@ def fallback_failed_trellis_assets_to_parametric(
                 }
             )
             continue
-        if simple_wall_door and _is_only_wall_thinness_or_axis_warning(blocking_warnings):
+        if simple_wall_door:
             report["skipped"].append(
                 {
                     "object_id": object_id,
                     "quality": quality,
                     "blocking_warnings": blocking_warnings,
                     "reason": (
-                        "kept Trellis/reused door asset because the only QA issue is wall-thinness/axis compression; "
-                        "parametric fallback makes these doors less faithful to the reference."
+                        "kept Trellis/reused door asset; wall-door QA failures must be handled by seed "
+                        "regeneration because generic parametric doors are too low fidelity for reference matching"
                     ),
                 }
             )
             continue
+        if simple_wall_door and _is_only_wall_thinness_or_axis_warning(blocking_warnings):
+            report.setdefault("warnings", []).append(
+                f"{object_id}: using flat parametric door fallback for wall-thinness/axis-compression QA warning"
+            )
+        if generic_curtain_panel:
+            report.setdefault("warnings", []).append(
+                f"{object_id}: using procedural mirrored curtain panel fallback for paired wall-curtain consistency"
+            )
         backup_dir.mkdir(parents=True, exist_ok=True)
         for suffix in (".glb", ".json"):
             src = asset_dir / f"{object_id}{suffix}"
@@ -35382,6 +38135,9 @@ def fallback_failed_trellis_assets_to_parametric(
                 "wall-mounted door uses procedural thin-panel fallback only because Trellis/reused asset failed QA: "
                 f"quality={quality}; warnings={blocking_warnings}"
                 if simple_wall_door
+                else "wall-mounted curtain panel uses procedural mirrored panel fallback because Trellis curtain mesh is not a stable single vertical sheet: "
+                f"quality={quality}; warnings={blocking_warnings}"
+                if generic_curtain_panel
                 else f"Trellis2 asset failed QA after available retries: quality={quality}; warnings={blocking_warnings}"
             ),
             "backup_dir": str(backup_dir),
@@ -35414,14 +38170,21 @@ def _asset_generation_object_for_trellis(obj: dict[str, Any]) -> dict[str, Any]:
         or str(generated.get("support_id") or "").startswith("wall_")
     )
     if wall_generation_subject:
-        if any(keyword in text for keyword in ("door", "closet")):
+        if _is_wall_door_object(generated) and str(generated.get("placement_type") or "") == "attached_to_wall":
+            door_identity = f"{object_id} {generated.get('category', '')} {generated.get('description', '')}".lower().replace("_", " ")
+            double_door = "double" in door_identity or "closet" in door_identity or "bi fold" in door_identity or "bifold" in door_identity
+            door_kind = (
+                "flat wall-mounted double closet door assembly with two adjacent paneled slabs"
+                if double_door
+                else "complete flat wall-mounted single interior door assembly with one paneled slab"
+            )
             generated["asset_prompt"] = (
-                f"{base_prompt}, flat wall-mounted double closet door panel only, very thin slab, "
-                "front-facing paneled door surface with knobs and hinges, no cabinet body, no wardrobe box, "
+                f"{base_prompt}, {door_kind}, very thin slab with full surrounding frame, "
+                "front-facing paneled door surface with knob and hinges, no cabinet body, no wardrobe box, "
                 "no side walls, no freestanding furniture, no thickness except a thin wall panel, "
                 "clean smooth painted door finish, no mottled noise texture, no chipped speckled surface"
             )
-            prompt_notes.append("wall_attached_door_flat_panel_prompt")
+            prompt_notes.append("wall_attached_double_door_flat_panel_prompt" if double_door else "wall_attached_single_door_flat_panel_prompt")
         elif "window" in text:
             generated["asset_prompt"] = (
                 f"{base_prompt}, thin wall-mounted residential window frame assembly, continuous outer frame and muntins, "
@@ -35774,6 +38537,11 @@ def _tree_sage_asset_cleanup_retry_object(obj: dict[str, Any]) -> dict[str, Any]
     return retry
 
 
+def _skip_ground_artifact_cleanup_for_asset(obj: dict[str, Any]) -> bool:
+    category = _category_text(obj)
+    return "curtain" in category or "drape" in category
+
+
 def repair_tree_sage_assets_for_scene(
     args: argparse.Namespace,
     plan: dict[str, Any],
@@ -35789,7 +38557,21 @@ def repair_tree_sage_assets_for_scene(
         object_id = str(obj.get("id"))
         src = source_dir / f"{object_id}.glb"
         dst = output_dir / f"{object_id}.glb"
-        report = clean_asset_ground_artifacts(src, dst, obj, force=force_clean)
+        if _skip_ground_artifact_cleanup_for_asset(obj):
+            output_dir.mkdir(parents=True, exist_ok=True)
+            if src.exists():
+                shutil.copy2(src, dst)
+            report = {
+                "schema": "tree_sage_asset_ground_artifact_cleanup_v1",
+                "source": str(src),
+                "output": str(dst),
+                "changed": False,
+                "requires_regeneration": False,
+                "skipped": True,
+                "reason": "curtain_or_drape_wall_hanging_asset_skips_ground_cleanup",
+            }
+        else:
+            report = clean_asset_ground_artifacts(src, dst, obj, force=force_clean)
         if report.get("requires_regeneration") and regenerate_integrated:
             retry_obj = _tree_sage_asset_cleanup_retry_object(obj)
             regenerated_src = generate_tree_sage_asset(
@@ -36166,7 +38948,7 @@ def regenerate_component_policy_failed_assets(
                 )
                 print(f"[component-policy] {warning}", flush=True)
         report["regenerated_count"] += len(regenerated_this_pass)
-        asset_registry = build_asset_registry(plan, asset_dir)
+        asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
         still_policy_failed = {
             object_id
             for object_id in asset_registry.get("component_policy_failed_ids", [])
@@ -36177,6 +38959,212 @@ def regenerate_component_policy_failed_assets(
             for object_id in attempted_this_pass
             if object_id in failed_attempt_ids or object_id in still_policy_failed
         ]
+    report["remaining_failed_ids"] = remaining_failed_ids
+    report["ok"] = not remaining_failed_ids
+    return report
+
+
+def _door_asset_retry_warnings(entry: dict[str, Any]) -> list[str]:
+    warnings = [str(item) for item in entry.get("warnings", [])] if isinstance(entry, dict) else []
+    retry_fragments = (
+        "door asset paint color drift",
+        "door asset has no readable light neutral paint texture",
+        "door asset has too few readable light neutral paint pixels",
+        "wall-attached object does not have a thin footprint axis",
+        "requires extreme axis compression",
+    )
+    return [warning for warning in warnings if any(fragment in warning for fragment in retry_fragments)]
+
+
+def _door_asset_retry_score(entry: dict[str, Any]) -> tuple[int, int, int, int]:
+    warnings = [str(item) for item in entry.get("warnings", [])] if isinstance(entry, dict) else []
+    retry_warnings = _door_asset_retry_warnings(entry)
+    severe_fragments = (
+        "door asset paint color drift",
+        "door asset has no readable light neutral paint texture",
+        "door asset has too few readable light neutral paint pixels",
+    )
+    severe_count = sum(1 for warning in retry_warnings if any(fragment in warning for fragment in severe_fragments))
+    quality_penalty = 0 if str(entry.get("quality", "ok")) == "ok" else 1
+    return (severe_count, len(retry_warnings), quality_penalty, len(warnings))
+
+
+def _copy_asset_candidate_files(asset_dir: Path, object_id: str, dest_dir: Path) -> list[str]:
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    copied: list[str] = []
+    for suffix in (".glb", ".json"):
+        src = asset_dir / f"{object_id}{suffix}"
+        if not src.exists():
+            continue
+        dest = dest_dir / src.name
+        shutil.copy2(src, dest)
+        copied.append(str(dest))
+    return copied
+
+
+def _restore_asset_candidate_files(source_dir: Path, asset_dir: Path, object_id: str) -> list[str]:
+    restored: list[str] = []
+    for suffix in (".glb", ".json"):
+        src = source_dir / f"{object_id}{suffix}"
+        if not src.exists():
+            continue
+        dest = asset_dir / f"{object_id}{suffix}"
+        shutil.copy2(src, dest)
+        restored.append(str(dest))
+    return restored
+
+
+def regenerate_wall_door_qa_failed_assets(
+    plan: dict[str, Any],
+    asset_dir: Path,
+    asset_registry: dict[str, Any],
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    objects = {
+        str(obj.get("id")): obj
+        for obj in plan.get("objects", [])
+        if isinstance(obj, dict) and obj.get("id")
+    }
+    failed_ids = [
+        object_id
+        for object_id, entry in (asset_registry.get("objects", {}) if isinstance(asset_registry.get("objects"), dict) else {}).items()
+        if object_id in objects
+        and _is_wall_door_object(objects[object_id])
+        and _door_asset_retry_warnings(entry if isinstance(entry, dict) else {})
+    ]
+    report: dict[str, Any] = {
+        "schema": "tree_sage_wall_door_qa_regeneration_v1",
+        "enabled": True,
+        "asset_dir": str(asset_dir),
+        "failed_ids": failed_ids,
+        "attempts": [],
+        "regenerated_count": 0,
+        "ok": True,
+    }
+    if not failed_ids:
+        report["reason"] = "no_wall_door_texture_qa_failures"
+        return report
+    reuse_only_mode = bool(
+        getattr(args, "reuse_asset_dir", None)
+        and not getattr(args, "partial_reuse_assets", False)
+        and not getattr(args, "component_policy_regenerate_reused_assets", False)
+    )
+    if reuse_only_mode:
+        report["enabled"] = False
+        report["reason"] = "skipped_for_reuse_asset_dir"
+        return report
+    max_passes = max(1, min(3, int(getattr(args, "component_policy_regenerate_max_passes", 2) or 2)))
+    candidate_root = asset_dir.parent / "wall_door_qa_regeneration_candidates"
+    remaining_failed_ids: list[str] = []
+    report["object_results"] = []
+    for object_offset, object_id in enumerate(failed_ids):
+        obj = objects.get(object_id)
+        if not obj:
+            continue
+        object_candidate_dir = candidate_root / object_id
+        original_dir = object_candidate_dir / "original"
+        original_files = _copy_asset_candidate_files(asset_dir, object_id, original_dir)
+        entry = asset_registry.get("objects", {}).get(object_id, {})
+        if not isinstance(entry, dict):
+            entry = {}
+        best_score = _door_asset_retry_score(entry)
+        best_dir = original_dir
+        best_label = "original"
+        initial_retry_warnings = _door_asset_retry_warnings(entry)
+        current_retry_warnings = list(initial_retry_warnings)
+        object_attempts: list[dict[str, Any]] = []
+        for pass_index in range(max_passes):
+            if not current_retry_warnings:
+                break
+            seed = int(args.seed) + 12000 + pass_index * 100 + object_offset
+            try:
+                regenerated_src = generate_tree_sage_asset(
+                    args,
+                    obj,
+                    asset_dir,
+                    seed=seed,
+                    force=True,
+                )
+                candidate_entry_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
+                candidate_entry = candidate_entry_registry.get("objects", {}).get(object_id, {})
+                if not isinstance(candidate_entry, dict):
+                    candidate_entry = {}
+                candidate_retry_warnings = _door_asset_retry_warnings(candidate_entry)
+                candidate_score = _door_asset_retry_score(candidate_entry)
+                candidate_dir = object_candidate_dir / f"seed_{seed}"
+                candidate_files = _copy_asset_candidate_files(asset_dir, object_id, candidate_dir)
+                accepted_as_best = candidate_score < best_score
+                if accepted_as_best:
+                    best_score = candidate_score
+                    best_dir = candidate_dir
+                    best_label = f"seed_{seed}"
+                attempt = {
+                    "pass": pass_index + 1,
+                    "id": object_id,
+                    "seed": seed,
+                    "input_retry_warnings": current_retry_warnings,
+                    "candidate_retry_warnings": candidate_retry_warnings,
+                    "candidate_score": list(candidate_score),
+                    "best_score_after_attempt": list(best_score),
+                    "accepted_as_best": accepted_as_best,
+                    "asset_path": str(regenerated_src),
+                    "candidate_files": candidate_files,
+                }
+                report["attempts"].append(attempt)
+                object_attempts.append(attempt)
+                report["regenerated_count"] += 1
+                current_retry_warnings = candidate_retry_warnings
+                print(
+                    f"[door-qa] regenerated {object_id} with seed {seed}: "
+                    f"warnings={candidate_retry_warnings or 'none'}",
+                    flush=True,
+                )
+            except Exception as exc:
+                warning = f"{object_id} door QA regeneration failed; kept best available asset: {type(exc).__name__}: {exc}"
+                report.setdefault("warnings", []).append(warning)
+                attempt = {
+                    "pass": pass_index + 1,
+                    "id": object_id,
+                    "seed": seed,
+                    "input_retry_warnings": current_retry_warnings,
+                    "error": warning,
+                }
+                report["attempts"].append(attempt)
+                object_attempts.append(attempt)
+                print(f"[door-qa] {warning}", flush=True)
+        restored_files = _restore_asset_candidate_files(best_dir, asset_dir, object_id) if original_files else []
+        asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
+        final_entry = asset_registry.get("objects", {}).get(object_id, {})
+        if not isinstance(final_entry, dict):
+            final_entry = {}
+        final_retry_warnings = _door_asset_retry_warnings(final_entry)
+        non_seed_fixable_warnings: list[str] = []
+        if final_retry_warnings and _is_only_wall_thinness_or_axis_warning(final_retry_warnings):
+            non_seed_fixable_warnings = list(final_retry_warnings)
+            report.setdefault("remaining_non_seed_fixable_warnings", []).append(
+                {
+                    "id": object_id,
+                    "warnings": non_seed_fixable_warnings,
+                    "reason": (
+                        "door seed retries did not remove wall-thinness/axis-compression warnings; "
+                        "kept best Trellis asset and blocked generic parametric fallback"
+                    ),
+                }
+            )
+        elif final_retry_warnings:
+            remaining_failed_ids.append(object_id)
+        report["object_results"].append(
+            {
+                "id": object_id,
+                "initial_retry_warnings": initial_retry_warnings,
+                "best_candidate": best_label,
+                "best_score": list(best_score),
+                "final_retry_warnings": final_retry_warnings,
+                "non_seed_fixable_warnings": non_seed_fixable_warnings,
+                "restored_files": restored_files,
+                "attempts": object_attempts,
+            }
+        )
     report["remaining_failed_ids"] = remaining_failed_ids
     report["ok"] = not remaining_failed_ids
     return report
@@ -36208,6 +39196,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reference-depth-value-convention", choices=("inverse_relative", "metric_depth"))
     parser.add_argument("--scene-graph-file", type=Path)
     parser.add_argument("--human-constraints-file", type=Path, action="append")
+    parser.add_argument(
+        "--layout-template-context",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Removed/ignored. The layout-template guidance module is no longer injected into the flow.",
+    )
+    parser.add_argument(
+        "--layout-template-dir",
+        type=Path,
+        action="append",
+        help="Removed/ignored. Kept only so older experiment commands still parse.",
+    )
     parser.add_argument("--allow-output-scene-graph-input", action="store_true")
     parser.add_argument("--room-layout-file", type=Path)
     parser.add_argument("--room-axis-mode", choices=("auto", "as_is", "swap"), default="auto")
@@ -36289,6 +39289,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scene-density-refiner-agent", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--scene-density-refiner-min-confidence", type=float, default=0.62)
     parser.add_argument("--scene-density-refiner-max-room-shrink", type=float, default=0.18)
+    parser.add_argument("--final-visual-critic-agent", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--final-visual-critic-max-iterations", type=int, default=3)
+    parser.add_argument("--final-visual-critic-accept-score", type=float, default=FINAL_VISUAL_CRITIC_ACCEPT_SCORE)
     parser.add_argument("--fine-spatial-order-refiner", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--fine-spatial-order-max-step", type=float, default=FINE_SPATIAL_ORDER_MAX_STEP)
     parser.add_argument("--fine-spatial-order-detailed-agent", action=argparse.BooleanOptionalAction, default=True)
@@ -36655,6 +39658,12 @@ def main() -> None:
         }
     if not args.reference_grounding_agent and _scene_graph_has_reference_grounding(scene_graph):
         reference_grounding_report = build_cached_reference_instance_grounding_report(scene_graph)
+    layout_template_dirs = args.layout_template_dir if bool(getattr(args, "layout_template_context", False)) else None
+    layout_template_context_report = load_layout_template_context(layout_template_dirs, scene_graph)
+    if not bool(getattr(args, "layout_template_context", False)):
+        layout_template_context_report["enabled"] = False
+        layout_template_context_report["reason"] = "layout_template_context_disabled_by_default"
+    write_json(output_dir / "layout_template_context_report.json", layout_template_context_report)
     if args.spatial_order_agent and args.flux_image and args.flux_image.exists():
         try:
             raw_spatial_order_report = run_codex_reference_spatial_order(
@@ -36664,6 +39673,7 @@ def main() -> None:
                 output_dir,
                 args.model,
                 reference_grounding_report,
+                layout_template_context_report,
             )
             spatial_order_report = merge_agent_reference_spatial_order(scene_graph, raw_spatial_order_report)
         except Exception as exc:
@@ -36872,6 +39882,7 @@ def main() -> None:
     wall_local_layout_plan_report["rebuilt_after_functional_clusters"] = True
     support_tree, cross_constraints, parent, relation_to_parent = build_support_tree(scene_graph)
     plan = build_plan_from_scene_graph(scene_graph, support_tree, cross_constraints, parent, relation_to_parent)
+    plan["_reference_spatial_order_report"] = spatial_order_report
     reference_scale_prior_report = build_reference_scale_prior_report(
         plan,
         scene_graph,
@@ -37161,11 +40172,29 @@ def main() -> None:
         "regenerated_count": 0,
         "ok": True,
     }
+    wall_door_qa_regeneration_report: dict[str, Any] = {
+        "schema": "tree_sage_wall_door_qa_regeneration_v1",
+        "enabled": False,
+        "reason": "plan_only_or_assets_not_prepared",
+        "attempts": [],
+        "regenerated_count": 0,
+        "ok": True,
+    }
     wall_asset_axis_repair_report: dict[str, Any] = {
         "schema": "tree_sage_wall_asset_axis_repair_v1",
         "enabled": False,
         "reason": "assets_not_prepared",
         "fixes": [],
+        "fix_count": 0,
+        "ok": True,
+    }
+    curtain_asset_axis_normalization_report: dict[str, Any] = {
+        "schema": "tree_sage_curtain_asset_axis_normalization_v1",
+        "enabled": False,
+        "reason": "assets_not_prepared",
+        "stages": [],
+        "fixes": [],
+        "checks": [],
         "fix_count": 0,
         "ok": True,
     }
@@ -38162,6 +41191,28 @@ def main() -> None:
         scene_graph=scene_graph,
     )
     scene_hypergraph_validation_report = validate_scene_hypergraph_constraints(plan, scene_hypergraph, parent)
+    final_ceiling_guard_state = _apply_final_ceiling_hanging_write_guard(
+        plan,
+        scene_graph,
+        support_tree,
+        parent,
+        relation_to_parent,
+        cross_constraints,
+        asset_registry,
+        support_surface_application_report,
+        stage="plan_only_pre_scene_plan_write",
+        branch_candidate_k=args.branch_candidate_k,
+        margin=args.aggregate_collision_margin,
+    )
+    if final_ceiling_guard_state:
+        support_surface_registry = final_ceiling_guard_state["support_surface_registry"]
+        branch_summaries = final_ceiling_guard_state["branch_summaries"]
+        reference_alignment_report = final_ceiling_guard_state["reference_alignment_report"]
+        branch_candidates = final_ceiling_guard_state["branch_candidates"]
+        aggregate_collision_report = final_ceiling_guard_state["aggregate_collision_report"]
+        scene_hypergraph = final_ceiling_guard_state["scene_hypergraph"]
+        scene_hypergraph_validation_report = final_ceiling_guard_state["scene_hypergraph_validation_report"]
+        spatial_order_repair_report = final_ceiling_guard_state["spatial_order_repair_report"]
     global_validator_report = build_global_validator_report(
         aggregate_collision_report,
         reference_alignment_report,
@@ -38200,6 +41251,7 @@ def main() -> None:
     write_json(output_dir / "semantic_agent_report.json", semantic_agent_report)
     write_json(output_dir / "relation_verifier_report.json", relation_verifier_report)
     write_json(output_dir / "reference_instance_map.json", reference_grounding_report)
+    write_json(output_dir / "layout_template_context_report.json", layout_template_context_report)
     write_json(output_dir / "reference_view_condition_report.json", reference_view_condition_report)
     write_json(output_dir / "reference_depth_report.json", reference_depth_report)
     write_json(output_dir / "asset_component_policy_report.json", asset_component_policy_report)
@@ -38240,7 +41292,9 @@ def main() -> None:
     write_json(output_dir / "floor_storage_front_repair_report.json", floor_storage_front_repair_report)
     write_json(output_dir / "bedside_front_pose_report.json", bedside_front_pose_report)
     write_json(output_dir / "component_policy_regeneration_report.json", component_policy_regeneration_report)
+    write_json(output_dir / "wall_door_qa_regeneration_report.json", wall_door_qa_regeneration_report)
     write_json(output_dir / "wall_asset_axis_repair_report.json", wall_asset_axis_repair_report)
+    write_json(output_dir / "curtain_asset_axis_normalization_report.json", curtain_asset_axis_normalization_report)
     write_json(output_dir / "back_to_wall_asset_local_yaw_repair_report.json", back_to_wall_asset_local_yaw_repair_report)
     write_json(output_dir / "asset_router_qa_fallback_report.json", asset_router_qa_fallback_report)
     write_json(output_dir / "parametric_fallback_report.json", parametric_fallback_report)
@@ -38285,6 +41339,7 @@ def main() -> None:
         "semantic_agent_report": str(output_dir / "semantic_agent_report.json"),
         "relation_verifier_report": str(output_dir / "relation_verifier_report.json"),
         "reference_instance_map": str(output_dir / "reference_instance_map.json"),
+        "layout_template_context_report": str(output_dir / "layout_template_context_report.json"),
         "reference_view_condition_report": str(output_dir / "reference_view_condition_report.json"),
         "reference_depth_report": str(output_dir / "reference_depth_report.json"),
         "asset_component_policy_report": str(output_dir / "asset_component_policy_report.json"),
@@ -38320,7 +41375,9 @@ def main() -> None:
         "floor_storage_front_repair_report": str(output_dir / "floor_storage_front_repair_report.json"),
         "bedside_front_pose_report": str(output_dir / "bedside_front_pose_report.json"),
         "component_policy_regeneration_report": str(output_dir / "component_policy_regeneration_report.json"),
+        "wall_door_qa_regeneration_report": str(output_dir / "wall_door_qa_regeneration_report.json"),
         "wall_asset_axis_repair_report": str(output_dir / "wall_asset_axis_repair_report.json"),
+        "curtain_asset_axis_normalization_report": str(output_dir / "curtain_asset_axis_normalization_report.json"),
         "back_to_wall_asset_local_yaw_repair_report": str(output_dir / "back_to_wall_asset_local_yaw_repair_report.json"),
         "asset_router_qa_fallback_report": str(output_dir / "asset_router_qa_fallback_report.json"),
         "parametric_fallback_report": str(output_dir / "parametric_fallback_report.json"),
@@ -38370,6 +41427,9 @@ def main() -> None:
         "reference_grounding_enabled": bool(reference_grounding_report.get("enabled")),
         "reference_grounding_mapped_count": int(reference_grounding_report.get("mapped_count", 0)),
         "reference_grounding_usable_count": int(reference_grounding_report.get("usable_for_spatial_order_count", 0)),
+        "layout_template_context_enabled": bool(layout_template_context_report.get("enabled")),
+        "layout_template_count": int(layout_template_context_report.get("template_count", 0) or 0),
+        "layout_template_active_count": int(layout_template_context_report.get("active_template_count", 0) or 0),
         "reference_view_mode": reference_view_condition_report.get("mode"),
         "reference_view_global_order_reliable": bool(reference_view_condition_report.get("global_order_reliable")),
         "reference_view_depth_readability_score": reference_view_condition_report.get("depth_readability_score"),
@@ -38467,6 +41527,8 @@ def main() -> None:
         "component_policy_regenerated_count": int(component_policy_regeneration_report.get("regenerated_count", 0)),
         "wall_asset_axis_repair_ok": bool(wall_asset_axis_repair_report.get("ok")),
         "wall_asset_axis_repair_fix_count": int(wall_asset_axis_repair_report.get("fix_count", 0)),
+        "curtain_asset_axis_normalization_ok": bool(curtain_asset_axis_normalization_report.get("ok")),
+        "curtain_asset_axis_normalization_fix_count": int(curtain_asset_axis_normalization_report.get("fix_count", 0)),
         "back_to_wall_asset_local_yaw_repair_ok": bool(back_to_wall_asset_local_yaw_repair_report.get("ok")),
         "back_to_wall_asset_local_yaw_repair_fix_count": int(back_to_wall_asset_local_yaw_repair_report.get("fix_count", 0)),
         "asset_router_qa_fallback_ok": bool(asset_router_qa_fallback_report.get("ok")),
@@ -38502,7 +41564,7 @@ def main() -> None:
 
     if not args.plan_only:
         asset_dir = prepare_assets(args, plan, output_dir / "assets_trellis2")
-        asset_registry = build_asset_registry(plan, asset_dir)
+        asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
         wall_asset_axis_repair_report = repair_wall_asset_axes_from_registry(
             plan,
             asset_registry,
@@ -38511,9 +41573,20 @@ def main() -> None:
             parent,
         )
         if wall_asset_axis_repair_report.get("fixes"):
-            asset_registry = build_asset_registry(plan, asset_dir)
+            asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
             branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
             reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
+        curtain_axis_pass = normalize_curtain_asset_axes_from_registry(
+            plan,
+            asset_registry,
+            stage="post_asset_registry",
+        )
+        curtain_asset_axis_normalization_report = merge_curtain_asset_axis_normalization_reports(
+            curtain_asset_axis_normalization_report,
+            curtain_axis_pass,
+        )
+        if curtain_axis_pass.get("fixes"):
+            asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
         back_to_wall_asset_local_yaw_repair_report = repair_back_to_wall_asset_local_yaw(
             plan,
             asset_dir,
@@ -38522,13 +41595,13 @@ def main() -> None:
             stage="post_asset_registry",
         )
         if back_to_wall_asset_local_yaw_repair_report.get("fixes"):
-            asset_registry = build_asset_registry(plan, asset_dir)
+            asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
             branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
             reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
         if args.asset_router:
             asset_router_qa_fallback_report = restore_router_fallback_assets(plan, asset_dir, asset_registry, output_dir)
             if asset_router_qa_fallback_report.get("restore_count"):
-                asset_registry = build_asset_registry(plan, asset_dir)
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
                 wall_asset_axis_repair_report = repair_wall_asset_axes_from_registry(
                     plan,
                     asset_registry,
@@ -38537,7 +41610,18 @@ def main() -> None:
                     parent,
                 )
                 if wall_asset_axis_repair_report.get("fixes"):
-                    asset_registry = build_asset_registry(plan, asset_dir)
+                    asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
+                router_curtain_axis_pass = normalize_curtain_asset_axes_from_registry(
+                    plan,
+                    asset_registry,
+                    stage="post_router_restore",
+                )
+                curtain_asset_axis_normalization_report = merge_curtain_asset_axis_normalization_reports(
+                    curtain_asset_axis_normalization_report,
+                    router_curtain_axis_pass,
+                )
+                if router_curtain_axis_pass.get("fixes"):
+                    asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
                 branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
                 reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
                 router_back_to_wall_yaw_report = repair_back_to_wall_asset_local_yaw(
@@ -38552,12 +41636,12 @@ def main() -> None:
                     router_back_to_wall_yaw_report,
                 )
                 if router_back_to_wall_yaw_report.get("fixes"):
-                    asset_registry = build_asset_registry(plan, asset_dir)
+                    asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
                     branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
                     reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
         component_policy_regeneration_report = regenerate_component_policy_failed_assets(plan, asset_dir, asset_registry, args)
         if component_policy_regeneration_report.get("regenerated_count"):
-            asset_registry = build_asset_registry(plan, asset_dir)
+            asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
             second_wall_axis_report = repair_wall_asset_axes_from_registry(
                 plan,
                 asset_registry,
@@ -38568,7 +41652,18 @@ def main() -> None:
             if second_wall_axis_report.get("fixes"):
                 wall_asset_axis_repair_report.setdefault("fixes", []).extend(second_wall_axis_report.get("fixes", []))
                 wall_asset_axis_repair_report["fix_count"] = len(wall_asset_axis_repair_report.get("fixes", []))
-                asset_registry = build_asset_registry(plan, asset_dir)
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
+            regenerated_curtain_axis_pass = normalize_curtain_asset_axes_from_registry(
+                plan,
+                asset_registry,
+                stage="post_component_policy_regeneration",
+            )
+            curtain_asset_axis_normalization_report = merge_curtain_asset_axis_normalization_reports(
+                curtain_asset_axis_normalization_report,
+                regenerated_curtain_axis_pass,
+            )
+            if regenerated_curtain_axis_pass.get("fixes"):
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
             branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
             reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
             regenerated_back_to_wall_yaw_report = repair_back_to_wall_asset_local_yaw(
@@ -38583,9 +41678,38 @@ def main() -> None:
                 regenerated_back_to_wall_yaw_report,
             )
             if regenerated_back_to_wall_yaw_report.get("fixes"):
-                asset_registry = build_asset_registry(plan, asset_dir)
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
                 branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
                 reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
+        wall_door_qa_regeneration_report = regenerate_wall_door_qa_failed_assets(plan, asset_dir, asset_registry, args)
+        if wall_door_qa_regeneration_report.get("regenerated_count"):
+            asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
+            door_wall_axis_report = repair_wall_asset_axes_from_registry(
+                plan,
+                asset_registry,
+                asset_dir,
+                cross_constraints,
+                parent,
+            )
+            if door_wall_axis_report.get("fixes"):
+                wall_asset_axis_repair_report.setdefault("fixes", []).extend(door_wall_axis_report.get("fixes", []))
+                wall_asset_axis_repair_report["fix_count"] = len(wall_asset_axis_repair_report.get("fixes", []))
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
+            door_back_to_wall_yaw_report = repair_back_to_wall_asset_local_yaw(
+                plan,
+                asset_dir,
+                cross_constraints,
+                parent,
+                stage="post_wall_door_qa_regeneration",
+            )
+            back_to_wall_asset_local_yaw_repair_report = merge_back_to_wall_asset_local_yaw_reports(
+                back_to_wall_asset_local_yaw_repair_report,
+                door_back_to_wall_yaw_report,
+            )
+            if door_back_to_wall_yaw_report.get("fixes"):
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
+            branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
+            reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
         parametric_fallback_report = fallback_failed_trellis_assets_to_parametric(
             plan,
             asset_dir,
@@ -38594,7 +41718,7 @@ def main() -> None:
             enabled=bool(args.parametric_fallback_assets),
         )
         if parametric_fallback_report.get("fallback_count"):
-            asset_registry = build_asset_registry(plan, asset_dir)
+            asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
             third_wall_axis_report = repair_wall_asset_axes_from_registry(
                 plan,
                 asset_registry,
@@ -38605,7 +41729,18 @@ def main() -> None:
             if third_wall_axis_report.get("fixes"):
                 wall_asset_axis_repair_report.setdefault("fixes", []).extend(third_wall_axis_report.get("fixes", []))
                 wall_asset_axis_repair_report["fix_count"] = len(wall_asset_axis_repair_report.get("fixes", []))
-                asset_registry = build_asset_registry(plan, asset_dir)
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
+            fallback_curtain_axis_pass = normalize_curtain_asset_axes_from_registry(
+                plan,
+                asset_registry,
+                stage="post_parametric_fallback",
+            )
+            curtain_asset_axis_normalization_report = merge_curtain_asset_axis_normalization_reports(
+                curtain_asset_axis_normalization_report,
+                fallback_curtain_axis_pass,
+            )
+            if fallback_curtain_axis_pass.get("fixes"):
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
             branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
             reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
             fallback_back_to_wall_yaw_report = repair_back_to_wall_asset_local_yaw(
@@ -38620,7 +41755,7 @@ def main() -> None:
                 fallback_back_to_wall_yaw_report,
             )
             if fallback_back_to_wall_yaw_report.get("fixes"):
-                asset_registry = build_asset_registry(plan, asset_dir)
+                asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
                 branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
                 reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
         post_asset_curtain_report: dict[str, Any] = {
@@ -38698,7 +41833,7 @@ def main() -> None:
                 group_pose_repair_report.setdefault("fixes", []).extend(post_front_group_repair_report.get("fixes", []))
                 group_pose_repair_report.setdefault("checks", []).extend(post_front_group_repair_report.get("checks", []))
                 group_pose_repair_report["fix_count"] = len(group_pose_repair_report.get("fixes", []))
-            asset_registry = build_asset_registry(plan, asset_dir)
+            asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
             branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
             reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
         if (
@@ -39678,7 +42813,7 @@ def main() -> None:
             post_prior_back_to_wall_yaw_report,
         )
         if post_prior_back_to_wall_yaw_report.get("fixes"):
-            asset_registry = build_asset_registry(plan, asset_dir)
+            asset_registry = build_asset_registry_maybe_cached(plan, asset_dir, args)
             support_surface_registry = build_support_surface_registry(plan, asset_registry)
             branch_summaries = build_branch_summaries(plan, support_tree, parent, relation_to_parent)
             reference_alignment_report = build_reference_alignment_report(scene_graph, plan, support_tree, cross_constraints, parent)
@@ -39734,6 +42869,28 @@ def main() -> None:
             scene_graph=scene_graph,
         )
         scene_hypergraph_validation_report = validate_scene_hypergraph_constraints(plan, scene_hypergraph, parent)
+        final_ceiling_guard_state = _apply_final_ceiling_hanging_write_guard(
+            plan,
+            scene_graph,
+            support_tree,
+            parent,
+            relation_to_parent,
+            cross_constraints,
+            asset_registry,
+            support_surface_application_report,
+            stage="non_plan_pre_scene_plan_write",
+            branch_candidate_k=args.branch_candidate_k,
+            margin=args.aggregate_collision_margin,
+        )
+        if final_ceiling_guard_state:
+            support_surface_registry = final_ceiling_guard_state["support_surface_registry"]
+            branch_summaries = final_ceiling_guard_state["branch_summaries"]
+            reference_alignment_report = final_ceiling_guard_state["reference_alignment_report"]
+            branch_candidates = final_ceiling_guard_state["branch_candidates"]
+            aggregate_collision_report = final_ceiling_guard_state["aggregate_collision_report"]
+            scene_hypergraph = final_ceiling_guard_state["scene_hypergraph"]
+            scene_hypergraph_validation_report = final_ceiling_guard_state["scene_hypergraph_validation_report"]
+            spatial_order_repair_report = final_ceiling_guard_state["spatial_order_repair_report"]
         if args.mujoco_check:
             mujoco_report = run_flow2_mujoco_check_module(
                 plan,
@@ -39775,7 +42932,9 @@ def main() -> None:
         write_json(output_dir / "floor_storage_front_repair_report.json", floor_storage_front_repair_report)
         write_json(output_dir / "bedside_front_pose_report.json", bedside_front_pose_report)
         write_json(output_dir / "component_policy_regeneration_report.json", component_policy_regeneration_report)
+        write_json(output_dir / "wall_door_qa_regeneration_report.json", wall_door_qa_regeneration_report)
         write_json(output_dir / "wall_asset_axis_repair_report.json", wall_asset_axis_repair_report)
+        write_json(output_dir / "curtain_asset_axis_normalization_report.json", curtain_asset_axis_normalization_report)
         write_json(output_dir / "back_to_wall_asset_local_yaw_repair_report.json", back_to_wall_asset_local_yaw_repair_report)
         write_json(output_dir / "asset_router_qa_fallback_report.json", asset_router_qa_fallback_report)
         write_json(output_dir / "parametric_fallback_report.json", parametric_fallback_report)
@@ -39799,6 +42958,7 @@ def main() -> None:
         write_json(output_dir / "room_axis_grounding_report.json", room_axis_grounding_report)
         write_json(output_dir / "wall_material_plan_report.json", wall_material_plan_report)
         write_json(output_dir / "reference_instance_map.json", reference_grounding_report)
+        write_json(output_dir / "layout_template_context_report.json", layout_template_context_report)
         write_json(output_dir / "reference_view_condition_report.json", reference_view_condition_report)
         write_json(output_dir / "reference_depth_report.json", reference_depth_report)
         write_json(output_dir / "asset_component_policy_report.json", asset_component_policy_report)
@@ -39860,6 +43020,10 @@ def main() -> None:
         summary["reference_grounding_enabled"] = bool(reference_grounding_report.get("enabled"))
         summary["reference_grounding_mapped_count"] = int(reference_grounding_report.get("mapped_count", 0))
         summary["reference_grounding_usable_count"] = int(reference_grounding_report.get("usable_for_spatial_order_count", 0))
+        summary["layout_template_context_report"] = str(output_dir / "layout_template_context_report.json")
+        summary["layout_template_context_enabled"] = bool(layout_template_context_report.get("enabled"))
+        summary["layout_template_count"] = int(layout_template_context_report.get("template_count", 0) or 0)
+        summary["layout_template_active_count"] = int(layout_template_context_report.get("active_template_count", 0) or 0)
         summary["reference_view_mode"] = reference_view_condition_report.get("mode")
         summary["reference_view_global_order_reliable"] = bool(reference_view_condition_report.get("global_order_reliable"))
         summary["reference_view_depth_readability_score"] = reference_view_condition_report.get("depth_readability_score")
@@ -39952,8 +43116,15 @@ def main() -> None:
         summary["component_policy_regeneration_ok"] = bool(component_policy_regeneration_report.get("ok"))
         summary["component_policy_regenerated_count"] = int(component_policy_regeneration_report.get("regenerated_count", 0))
         summary["component_policy_remaining_failed_ids"] = component_policy_regeneration_report.get("remaining_failed_ids", [])
+        summary["wall_door_qa_regeneration_ok"] = bool(wall_door_qa_regeneration_report.get("ok"))
+        summary["wall_door_qa_regenerated_count"] = int(wall_door_qa_regeneration_report.get("regenerated_count", 0))
+        summary["wall_door_qa_remaining_failed_ids"] = wall_door_qa_regeneration_report.get("remaining_failed_ids", [])
         summary["wall_asset_axis_repair_ok"] = bool(wall_asset_axis_repair_report.get("ok"))
         summary["wall_asset_axis_repair_fix_count"] = int(wall_asset_axis_repair_report.get("fix_count", 0))
+        summary["curtain_asset_axis_normalization_ok"] = bool(curtain_asset_axis_normalization_report.get("ok"))
+        summary["curtain_asset_axis_normalization_fix_count"] = int(
+            curtain_asset_axis_normalization_report.get("fix_count", 0)
+        )
         summary["back_to_wall_asset_local_yaw_repair_ok"] = bool(back_to_wall_asset_local_yaw_repair_report.get("ok"))
         summary["back_to_wall_asset_local_yaw_repair_fix_count"] = int(back_to_wall_asset_local_yaw_repair_report.get("fix_count", 0))
         summary["asset_router_qa_fallback_ok"] = bool(asset_router_qa_fallback_report.get("ok"))
@@ -39994,6 +43165,8 @@ def main() -> None:
             summary.pop("scene_hypergraph_validation_warnings", None)
         if wall_asset_axis_repair_report.get("fixes"):
             summary["wall_asset_axis_repair_fixes"] = wall_asset_axis_repair_report.get("fixes")
+        if curtain_asset_axis_normalization_report.get("fixes"):
+            summary["curtain_asset_axis_normalization_fixes"] = curtain_asset_axis_normalization_report.get("fixes")
         if back_to_wall_asset_local_yaw_repair_report.get("fixes"):
             summary["back_to_wall_asset_local_yaw_repair_fixes"] = back_to_wall_asset_local_yaw_repair_report.get("fixes")
         if mujoco_report.get("enabled") and (mujoco_report.get("displacement_warning") or not mujoco_report.get("ok")):
@@ -41698,6 +44871,38 @@ def main() -> None:
                         scene_hypergraph = final_output_state["scene_hypergraph"]
                         scene_hypergraph_validation_report = final_output_state["scene_hypergraph_validation_report"]
                         spatial_order_repair_report = final_output_state["spatial_order_repair_report"]
+                    density_workstation_retuck_report = retuck_workstation_chairs(
+                        plan,
+                        stage="scene_density_refiner_post_collision",
+                    )
+                    density_collision_repair_report["passes"].append(
+                        {
+                            "type": "post_density_workstation_chair_retuck",
+                            "fix_count": int(density_workstation_retuck_report.get("fix_count", 0) or 0),
+                            "ok": bool(density_workstation_retuck_report.get("ok", True)),
+                            "fixes": density_workstation_retuck_report.get("fixes", []),
+                        }
+                    )
+                    if density_workstation_retuck_report.get("fixes"):
+                        final_output_state = _rebuild_flow2_validation_state(
+                            plan,
+                            scene_graph,
+                            support_tree,
+                            parent,
+                            relation_to_parent,
+                            cross_constraints,
+                            asset_registry,
+                            args.branch_candidate_k,
+                            args.aggregate_collision_margin,
+                        )
+                        support_surface_registry = final_output_state["support_surface_registry"]
+                        branch_summaries = final_output_state["branch_summaries"]
+                        reference_alignment_report = final_output_state["reference_alignment_report"]
+                        branch_candidates = final_output_state["branch_candidates"]
+                        aggregate_collision_report = final_output_state["aggregate_collision_report"]
+                        scene_hypergraph = final_output_state["scene_hypergraph"]
+                        scene_hypergraph_validation_report = final_output_state["scene_hypergraph_validation_report"]
+                        spatial_order_repair_report = final_output_state["spatial_order_repair_report"]
                     density_post_collision_window_curtain_report: dict[str, Any] = {
                         "schema": "tree_sage_scene_density_refiner_window_curtain_assembly_v1",
                         "stage": "scene_density_refiner_post_collision",
@@ -42602,6 +45807,28 @@ def main() -> None:
                                         }
                                     )
                                     support_surface_registry = build_support_surface_registry(plan, asset_registry)
+                                residual_workstation_retuck_report = retuck_workstation_chairs(
+                                    plan,
+                                    stage="scene_density_refiner_residual_post_collision",
+                                )
+                                residual_collision_repair_report["passes"].append(
+                                    {
+                                        "type": "post_residual_workstation_chair_retuck",
+                                        "fix_count": int(residual_workstation_retuck_report.get("fix_count", 0) or 0),
+                                        "ok": bool(residual_workstation_retuck_report.get("ok", True)),
+                                        "fixes": residual_workstation_retuck_report.get("fixes", []),
+                                    }
+                                )
+                                if residual_workstation_retuck_report.get("fixes"):
+                                    support_surface_registry = build_support_surface_registry(plan, asset_registry)
+                                    aggregate_collision_report = build_aggregate_collision_report(
+                                        plan,
+                                        support_tree,
+                                        parent,
+                                        relation_to_parent,
+                                        support_surface_registry,
+                                        margin=args.aggregate_collision_margin,
+                                    )
                                 support_surface_registry = build_support_surface_registry(plan, asset_registry)
                                 residual_final_surface_report = apply_support_surface_registry(
                                     plan,
@@ -43089,6 +46316,119 @@ def main() -> None:
             else:
                 summary["reference_vs_render_density_refined"] = scene_density_refiner_report.get("comparison_after")
         summary["scene_density_refiner_report"] = str(output_dir / "scene_density_refiner_report.json")
+        human_constraint_priority_report: dict[str, Any] = {
+            "schema": "tree_sage_human_constraint_priority_baseline_v1",
+            "enabled": bool(args.fine_spatial_order_bbox_projection_overlap),
+            "stage": "post_density_refiner_pre_fine_snapshot",
+            "reason": "not_run",
+            "source_human_bbox_projection_overlap_count": int(
+                human_constraints_report.get("bbox_projection_overlap_count", 0) or 0
+            ),
+            "fixes": [],
+            "fix_count": 0,
+            "ok": True,
+        }
+        if not args.fine_spatial_order_bbox_projection_overlap:
+            human_constraint_priority_report["reason"] = "bbox_projection_overlap_refiner_disabled"
+        elif int(human_constraints_report.get("bbox_projection_overlap_count", 0) or 0) <= 0:
+            human_constraint_priority_report["reason"] = "no_human_bbox_projection_overlap_constraints"
+        else:
+            _fine_spatial_order_bbox_projection_overlap_refinement(
+                plan,
+                scene_graph,
+                support_tree,
+                parent,
+                cross_constraints,
+                human_constraint_priority_report,
+                enabled=True,
+                max_step=float(args.fine_spatial_order_max_step),
+                human_only=True,
+            )
+            human_priority_fix_count = len(human_constraint_priority_report.get("fixes", []))
+            human_priority_unresolved_required_count = int(
+                human_constraint_priority_report.get("bbox_projection_overlap_human_unresolved_required_count", 0) or 0
+            )
+            human_constraint_priority_report["fix_count"] = human_priority_fix_count
+            human_constraint_priority_report["unresolved_required_count"] = human_priority_unresolved_required_count
+            human_constraint_priority_report["applied"] = human_priority_fix_count > 0
+            if human_priority_unresolved_required_count > 0:
+                human_constraint_priority_report["ok"] = False
+                human_constraint_priority_report["reason"] = "unresolved_human_bbox_projection_overlap_constraints"
+            elif human_priority_fix_count > 0:
+                human_constraint_priority_report["reason"] = "applied_human_constraints_as_fine_baseline"
+            else:
+                human_constraint_priority_report["reason"] = "already_satisfied"
+            if human_priority_fix_count > 0:
+                final_output_state = _rebuild_flow2_validation_state(
+                    plan,
+                    scene_graph,
+                    support_tree,
+                    parent,
+                    relation_to_parent,
+                    cross_constraints,
+                    asset_registry,
+                    args.branch_candidate_k,
+                    args.aggregate_collision_margin,
+                )
+                support_surface_registry = final_output_state["support_surface_registry"]
+                branch_summaries = final_output_state["branch_summaries"]
+                reference_alignment_report = final_output_state["reference_alignment_report"]
+                branch_candidates = final_output_state["branch_candidates"]
+                aggregate_collision_report = final_output_state["aggregate_collision_report"]
+                scene_hypergraph = final_output_state["scene_hypergraph"]
+                scene_hypergraph_validation_report = final_output_state["scene_hypergraph_validation_report"]
+                spatial_order_repair_report = final_output_state["spatial_order_repair_report"]
+                if args.mujoco_check:
+                    mujoco_report = run_flow2_mujoco_check_module(
+                        plan,
+                        output_dir,
+                        parent,
+                        python_bin=args.mujoco_python,
+                        max_displacement=args.mujoco_max_displacement,
+                        is_wall_attached_fn=_is_wall_attached_object,
+                        is_hanging_fn=_is_hanging_object,
+                        is_bed_or_sofa_fn=_is_bed_or_sofa_object,
+                        has_text_fn=_has_text,
+                        footprint_yaw_fn=_footprint_yaw,
+                    )
+                global_validator_report = build_global_validator_report(
+                    aggregate_collision_report,
+                    reference_alignment_report,
+                    pose_review_report,
+                    incremental_branch_report,
+                    spatial_order_repair_report,
+                    spatial_relation_repair_report,
+                    scene_hypergraph_validation_report,
+                    mujoco_report,
+                )
+                human_constraint_priority_report["validation_after"] = {
+                    "reference_alignment_ok": bool(reference_alignment_report.get("ok")),
+                    "spatial_order_repair_ok": bool(spatial_order_repair_report.get("ok")),
+                    "scene_hypergraph_validation_ok": bool(scene_hypergraph_validation_report.get("ok")),
+                    "aggregate_collision_ok": bool(aggregate_collision_report.get("ok")),
+                    "aggregate_conflict_count": int(aggregate_collision_report.get("conflict_count", 0) or 0),
+                    "mujoco_ok": bool(mujoco_report.get("ok")),
+                    "mujoco_max_displacement": float(mujoco_report.get("max_displacement", 0.0) or 0.0),
+                    "global_validator_ok": bool(global_validator_report.get("ok")),
+                }
+        write_json(output_dir / "human_constraint_priority_report.json", human_constraint_priority_report)
+        summary["human_constraint_priority_report"] = str(output_dir / "human_constraint_priority_report.json")
+        summary["human_constraint_priority_enabled"] = bool(human_constraint_priority_report.get("enabled"))
+        summary["human_constraint_priority_reason"] = human_constraint_priority_report.get("reason")
+        summary["human_constraint_priority_fix_count"] = int(human_constraint_priority_report.get("fix_count", 0) or 0)
+        summary["human_constraint_priority_unresolved_required_count"] = int(
+            human_constraint_priority_report.get("unresolved_required_count", 0) or 0
+        )
+        summary["reference_alignment_ok"] = bool(reference_alignment_report.get("ok"))
+        summary["spatial_order_repair_ok"] = bool(spatial_order_repair_report.get("ok"))
+        summary["spatial_order_repair_fix_count"] = int(spatial_order_repair_report.get("fix_count", 0))
+        summary["scene_hypergraph_validation_ok"] = bool(scene_hypergraph_validation_report.get("ok"))
+        summary["scene_hypergraph_validation_warning_count"] = len(scene_hypergraph_validation_report.get("warnings", []))
+        summary["aggregate_collision_ok"] = bool(aggregate_collision_report.get("ok"))
+        summary["aggregate_conflict_count"] = int(aggregate_collision_report.get("conflict_count", 0))
+        summary["mujoco_ok"] = bool(mujoco_report.get("ok"))
+        summary["mujoco_max_displacement"] = float(mujoco_report.get("max_displacement", 0.0) or 0.0)
+        summary["global_validator_ok"] = bool(global_validator_report.get("ok"))
         pre_fine_plan = deepcopy(plan)
         pre_fine_support_surface_registry = deepcopy(support_surface_registry)
         pre_fine_branch_summaries = deepcopy(branch_summaries)
@@ -43130,6 +46470,7 @@ def main() -> None:
                         detailed_order_image,
                         output_dir,
                         args.model,
+                        layout_template_context_report,
                     )
                     fine_detailed_order_agent_report["enabled"] = True
                     fine_detailed_order_agent_report["comparison_image"] = str(detailed_order_image)
@@ -43410,6 +46751,9 @@ def main() -> None:
             fine_spatial_order_report["post_scene_hypergraph_validation_report"] = deepcopy(
                 scene_hypergraph_validation_report
             )
+            spatial_order_repair_residuals = _required_spatial_order_repair_residuals(spatial_order_repair_report)
+            fine_spatial_order_report["post_spatial_order_repair_residuals"] = spatial_order_repair_residuals
+            fine_spatial_order_report["post_spatial_order_repair_residual_count"] = len(spatial_order_repair_residuals)
             if args.mujoco_check:
                 mujoco_report = run_flow2_mujoco_check_module(
                     plan,
@@ -43424,6 +46768,84 @@ def main() -> None:
                     footprint_yaw_fn=_footprint_yaw,
                 )
             fine_spatial_order_report["post_mujoco_report"] = deepcopy(mujoco_report)
+            fine_collision_backoff_report: dict[str, Any] = {
+                "schema": "tree_sage_fine_spatial_order_collision_backoff_repair_v1",
+                "enabled": True,
+                "reason": "not_needed",
+                "pre_fine_conflict_count": int(pre_fine_aggregate_collision_report.get("conflict_count", 0) or 0),
+                "candidate_conflict_count_before": int(aggregate_collision_report.get("conflict_count", 0) or 0),
+                "actions": [],
+            }
+            if int(aggregate_collision_report.get("conflict_count", 0) or 0) > int(
+                pre_fine_aggregate_collision_report.get("conflict_count", 0) or 0
+            ):
+                candidate_repair_report = run_repair_agent(
+                    plan,
+                    support_tree,
+                    parent,
+                    relation_to_parent,
+                    support_surface_registry,
+                    aggregate_collision_report,
+                    max_iterations=2,
+                    cross_constraints=cross_constraints,
+                    scene_graph=scene_graph,
+                    margin=args.aggregate_collision_margin,
+                )
+                fine_collision_backoff_report["repair_report"] = candidate_repair_report
+                fine_collision_backoff_report["actions"] = candidate_repair_report.get("actions", [])
+                fine_collision_backoff_report["reason"] = (
+                    "applied_candidate_collision_repair"
+                    if candidate_repair_report.get("actions")
+                    else "candidate_collision_repair_no_actions"
+                )
+                if candidate_repair_report.get("actions"):
+                    final_output_state = _rebuild_flow2_validation_state(
+                        plan,
+                        scene_graph,
+                        support_tree,
+                        parent,
+                        relation_to_parent,
+                        cross_constraints,
+                        asset_registry,
+                        args.branch_candidate_k,
+                        args.aggregate_collision_margin,
+                    )
+                    support_surface_registry = final_output_state["support_surface_registry"]
+                    branch_summaries = final_output_state["branch_summaries"]
+                    reference_alignment_report = final_output_state["reference_alignment_report"]
+                    branch_candidates = final_output_state["branch_candidates"]
+                    aggregate_collision_report = final_output_state["aggregate_collision_report"]
+                    scene_hypergraph = final_output_state["scene_hypergraph"]
+                    scene_hypergraph_validation_report = final_output_state["scene_hypergraph_validation_report"]
+                    spatial_order_repair_report = final_output_state["spatial_order_repair_report"]
+                    fine_spatial_order_report["post_aggregate_collision_report_after_backoff"] = deepcopy(
+                        aggregate_collision_report
+                    )
+                    fine_spatial_order_report["post_scene_hypergraph_validation_report_after_backoff"] = deepcopy(
+                        scene_hypergraph_validation_report
+                    )
+                    if args.mujoco_check:
+                        mujoco_report = run_flow2_mujoco_check_module(
+                            plan,
+                            output_dir,
+                            parent,
+                            python_bin=args.mujoco_python,
+                            max_displacement=args.mujoco_max_displacement,
+                            is_wall_attached_fn=_is_wall_attached_object,
+                            is_hanging_fn=_is_hanging_object,
+                            is_bed_or_sofa_fn=_is_bed_or_sofa_object,
+                            has_text_fn=_has_text,
+                            footprint_yaw_fn=_footprint_yaw,
+                        )
+                    fine_spatial_order_report["post_mujoco_report_after_backoff"] = deepcopy(mujoco_report)
+            fine_collision_backoff_report["candidate_conflict_count_after"] = int(
+                aggregate_collision_report.get("conflict_count", 0) or 0
+            )
+            fine_collision_backoff_report["ok"] = (
+                int(fine_collision_backoff_report["candidate_conflict_count_after"])
+                <= int(fine_collision_backoff_report["pre_fine_conflict_count"])
+            )
+            fine_spatial_order_report["collision_backoff_repair"] = fine_collision_backoff_report
             fine_conflict_count = int(aggregate_collision_report.get("conflict_count", 0) or 0)
             pre_fine_conflict_count = int(pre_fine_aggregate_collision_report.get("conflict_count", 0) or 0)
             fine_mujoco_max = float(mujoco_report.get("max_displacement", 0.0) or 0.0)
@@ -43445,6 +46867,9 @@ def main() -> None:
             bbox_projection_overlap_unresolved = int(
                 fine_spatial_order_report.get("bbox_projection_overlap_unresolved_required_count", 0) or 0
             )
+            spatial_order_repair_unresolved = int(
+                fine_spatial_order_report.get("post_spatial_order_repair_residual_count", 0) or 0
+            )
             fine_spatial_order_report["post_conflict_count"] = fine_conflict_count
             fine_spatial_order_report["post_mujoco_max_displacement"] = fine_mujoco_max
             fine_spatial_order_report["collision_regression"] = bool(collision_regression)
@@ -43457,6 +46882,9 @@ def main() -> None:
             fine_spatial_order_report["detailed_order_unresolved_regression"] = bool(detailed_order_unresolved > 0)
             fine_spatial_order_report["bbox_projection_overlap_unresolved_regression"] = bool(
                 bbox_projection_overlap_unresolved > 0
+            )
+            fine_spatial_order_report["spatial_order_repair_unresolved_regression"] = bool(
+                spatial_order_repair_unresolved > 0
             )
             if collision_regression or mujoco_regression:
                 plan = pre_fine_plan
@@ -43548,6 +46976,21 @@ def main() -> None:
                 fine_spatial_order_report["accepted"] = False
                 fine_spatial_order_report["reason"] = "rejected_unresolved_bed_lamp_top_relation"
                 fine_spatial_order_report["ok"] = False
+            elif spatial_order_repair_unresolved > 0:
+                plan = pre_fine_plan
+                support_surface_registry = pre_fine_support_surface_registry
+                branch_summaries = pre_fine_branch_summaries
+                reference_alignment_report = pre_fine_reference_alignment_report
+                branch_candidates = pre_fine_branch_candidates
+                aggregate_collision_report = pre_fine_aggregate_collision_report
+                scene_hypergraph = pre_fine_scene_hypergraph
+                scene_hypergraph_validation_report = pre_fine_scene_hypergraph_validation_report
+                spatial_order_repair_report = pre_fine_spatial_order_repair_report
+                global_validator_report = pre_fine_global_validator_report
+                mujoco_report = pre_fine_mujoco_report
+                fine_spatial_order_report["accepted"] = False
+                fine_spatial_order_report["reason"] = "rejected_unresolved_spatial_order_repair_residuals"
+                fine_spatial_order_report["ok"] = False
             else:
                 fine_spatial_order_report["accepted"] = True
                 fine_spatial_order_report["reason"] = "accepted"
@@ -43612,6 +47055,28 @@ def main() -> None:
             scene_hypergraph = final_output_state["scene_hypergraph"]
             scene_hypergraph_validation_report = final_output_state["scene_hypergraph_validation_report"]
             spatial_order_repair_report = final_output_state["spatial_order_repair_report"]
+            final_ceiling_guard_state = _apply_final_ceiling_hanging_write_guard(
+                plan,
+                scene_graph,
+                support_tree,
+                parent,
+                relation_to_parent,
+                cross_constraints,
+                asset_registry,
+                support_surface_application_report,
+                stage="fine_spatial_order_pre_scene_plan_write",
+                branch_candidate_k=args.branch_candidate_k,
+                margin=args.aggregate_collision_margin,
+            )
+            if final_ceiling_guard_state:
+                support_surface_registry = final_ceiling_guard_state["support_surface_registry"]
+                branch_summaries = final_ceiling_guard_state["branch_summaries"]
+                reference_alignment_report = final_ceiling_guard_state["reference_alignment_report"]
+                branch_candidates = final_ceiling_guard_state["branch_candidates"]
+                aggregate_collision_report = final_ceiling_guard_state["aggregate_collision_report"]
+                scene_hypergraph = final_ceiling_guard_state["scene_hypergraph"]
+                scene_hypergraph_validation_report = final_ceiling_guard_state["scene_hypergraph_validation_report"]
+                spatial_order_repair_report = final_ceiling_guard_state["spatial_order_repair_report"]
             if args.mujoco_check:
                 mujoco_report = run_flow2_mujoco_check_module(
                     plan,
@@ -43671,6 +47136,341 @@ def main() -> None:
                 fine_spatial_order_report["comparison_after"] = str(fine_comparison)
                 summary["reference_vs_render_fine_spatial_order"] = str(fine_comparison)
             write_json(output_dir / "fine_spatial_order_report.json", fine_spatial_order_report)
+        else:
+            assemble_scene_blender(args.blender_bin, output_dir / "scene_plan.json", asset_dir, scene_glb)
+            final_accepted_render = output_dir / "render_est_front_high_final_accepted.png"
+            render_estimated_reference_view(
+                args.blender_bin,
+                scene_glb,
+                output_dir / "scene_plan.json",
+                final_accepted_render,
+                camera=args.final_render_pose_feedback_camera,
+                resolution_x=args.final_render_pose_feedback_resolution_x,
+                resolution_y=args.final_render_pose_feedback_resolution_y,
+            )
+            fine_spatial_order_report["final_accepted_render"] = str(final_accepted_render)
+            if final_pose_reference_image and final_pose_reference_image.exists():
+                final_accepted_comparison = make_reference_vs_render_sheet(
+                    final_pose_reference_image,
+                    final_accepted_render,
+                    output_dir / "reference_vs_render_est_front_high_final_accepted.png",
+                    "TreeSAGE Flow 2 final accepted layout",
+                )
+                fine_spatial_order_report["final_accepted_comparison"] = str(final_accepted_comparison)
+                summary["reference_vs_render_final_accepted"] = str(final_accepted_comparison)
+            write_json(output_dir / "fine_spatial_order_report.json", fine_spatial_order_report)
+        final_visual_critic_report: dict[str, Any] = {
+            "schema": "tree_sage_final_visual_critic_loop_v1",
+            "enabled": bool(args.final_visual_critic_agent),
+            "max_iterations": int(args.final_visual_critic_max_iterations),
+            "accept_score": float(args.final_visual_critic_accept_score),
+            "iterations": [],
+            "accepted": False,
+            "applied_fix_count": 0,
+            "ok": True,
+        }
+        current_critic_comparison = (
+            fine_spatial_order_report.get("comparison_after")
+            or fine_spatial_order_report.get("final_accepted_comparison")
+            or summary.get("reference_vs_render_fine_spatial_order")
+            or summary.get("reference_vs_render_final_accepted")
+        )
+        if args.final_visual_critic_agent and final_pose_reference_image and final_pose_reference_image.exists() and current_critic_comparison:
+            try:
+                max_iterations = max(1, int(args.final_visual_critic_max_iterations))
+                current_comparison_path = Path(str(current_critic_comparison))
+                for critic_iteration in range(1, max_iterations + 1):
+                    critic_before = run_visual_comparison_critic_agent(
+                        current_comparison_path,
+                        output_dir,
+                        args.model,
+                        iteration=f"{critic_iteration}_before",
+                    )
+                    before_score = _visual_critic_score(critic_before)
+                    iteration_report: dict[str, Any] = {
+                        "iteration": critic_iteration,
+                        "comparison_before": str(current_comparison_path),
+                        "critic_before": critic_before,
+                        "score_before": round(float(before_score), 6),
+                        "accepted_before": _visual_critic_accepts(
+                            critic_before,
+                            float(args.final_visual_critic_accept_score),
+                        ),
+                    }
+                    if iteration_report["accepted_before"]:
+                        iteration_report["reason"] = "critic_accepts_current_result"
+                        iteration_report["generalization_gate"] = _assess_visual_critic_generalization(
+                            critic_report=critic_before,
+                            planner_report=None,
+                            repair_report=None,
+                            improved=None,
+                            accepted=True,
+                            score_before=before_score,
+                            score_after=None,
+                        )
+                        final_visual_critic_report["accepted"] = True
+                        final_visual_critic_report["reason"] = "critic_accepts_current_result"
+                        final_visual_critic_report["iterations"].append(iteration_report)
+                        break
+
+                    pre_repair_state = {
+                        "plan": deepcopy(plan),
+                        "support_surface_registry": deepcopy(support_surface_registry),
+                        "branch_summaries": deepcopy(branch_summaries),
+                        "reference_alignment_report": deepcopy(reference_alignment_report),
+                        "branch_candidates": deepcopy(branch_candidates),
+                        "aggregate_collision_report": deepcopy(aggregate_collision_report),
+                        "scene_hypergraph": deepcopy(scene_hypergraph),
+                        "scene_hypergraph_validation_report": deepcopy(scene_hypergraph_validation_report),
+                        "spatial_order_repair_report": deepcopy(spatial_order_repair_report),
+                        "global_validator_report": deepcopy(global_validator_report),
+                        "mujoco_report": deepcopy(mujoco_report),
+                    }
+                    try:
+                        repair_planner_report = run_visual_critic_repair_planner_agent(
+                            current_comparison_path,
+                            plan,
+                            critic_before,
+                            output_dir,
+                            args.model,
+                            iteration=critic_iteration,
+                        )
+                    except Exception as planner_exc:
+                        repair_planner_report = {
+                            "schema": "tree_sage_visual_critic_repair_planner_v1",
+                            "ok": False,
+                            "reason": "planner_agent_error",
+                            "error": f"{type(planner_exc).__name__}: {planner_exc}",
+                            "repair_actions": [],
+                            "unsupported_actions": [],
+                        }
+                    repair_report = _apply_visual_critic_supported_repairs(
+                        plan,
+                        scene_graph,
+                        cross_constraints,
+                        parent,
+                        critic_before,
+                        repair_planner_report,
+                    )
+                    iteration_report["repair"] = repair_report
+                    if int(repair_report.get("fix_count", 0) or 0) <= 0:
+                        iteration_report["reason"] = "no_supported_repairs"
+                        iteration_report["generalization_gate"] = _assess_visual_critic_generalization(
+                            critic_report=critic_before,
+                            planner_report=repair_planner_report,
+                            repair_report=repair_report,
+                            improved=False,
+                            accepted=False,
+                            score_before=before_score,
+                            score_after=None,
+                        )
+                        final_visual_critic_report["reason"] = "no_supported_repairs"
+                        final_visual_critic_report["iterations"].append(iteration_report)
+                        break
+
+                    final_output_state = _rebuild_flow2_validation_state(
+                        plan,
+                        scene_graph,
+                        support_tree,
+                        parent,
+                        relation_to_parent,
+                        cross_constraints,
+                        asset_registry,
+                        args.branch_candidate_k,
+                        args.aggregate_collision_margin,
+                    )
+                    support_surface_registry = final_output_state["support_surface_registry"]
+                    branch_summaries = final_output_state["branch_summaries"]
+                    reference_alignment_report = final_output_state["reference_alignment_report"]
+                    branch_candidates = final_output_state["branch_candidates"]
+                    aggregate_collision_report = final_output_state["aggregate_collision_report"]
+                    scene_hypergraph = final_output_state["scene_hypergraph"]
+                    scene_hypergraph_validation_report = final_output_state["scene_hypergraph_validation_report"]
+                    spatial_order_repair_report = final_output_state["spatial_order_repair_report"]
+                    if args.mujoco_check:
+                        mujoco_report = run_flow2_mujoco_check_module(
+                            plan,
+                            output_dir,
+                            parent,
+                            python_bin=args.mujoco_python,
+                            max_displacement=args.mujoco_max_displacement,
+                            is_wall_attached_fn=_is_wall_attached_object,
+                            is_hanging_fn=_is_hanging_object,
+                            is_bed_or_sofa_fn=_is_bed_or_sofa_object,
+                            has_text_fn=_has_text,
+                            footprint_yaw_fn=_footprint_yaw,
+                        )
+                    global_validator_report = build_global_validator_report(
+                        aggregate_collision_report,
+                        reference_alignment_report,
+                        pose_review_report,
+                        incremental_branch_report,
+                        spatial_order_repair_report,
+                        spatial_relation_repair_report,
+                        scene_hypergraph_validation_report,
+                        mujoco_report,
+                    )
+                    render_preview(plan, output_dir / "preview_topdown.png")
+                    write_json(output_dir / "scene_plan.json", plan)
+                    write_json(output_dir / "support_surface_registry.json", support_surface_registry)
+                    write_json(output_dir / "branch_summaries.json", branch_summaries)
+                    write_json(output_dir / "scene_hypergraph.json", scene_hypergraph)
+                    write_json(output_dir / "scene_hypergraph_validation_report.json", scene_hypergraph_validation_report)
+                    write_json(output_dir / "branch_candidates.json", branch_candidates)
+                    write_json(output_dir / "aggregate_collision_report.json", aggregate_collision_report)
+                    write_json(output_dir / "global_validator_report.json", global_validator_report)
+                    write_json(output_dir / "reference_alignment_report.json", reference_alignment_report)
+                    write_json(output_dir / "spatial_order_repair_report.json", spatial_order_repair_report)
+                    write_json(output_dir / "mujoco_check.json", mujoco_report)
+                    assemble_scene_blender(args.blender_bin, output_dir / "scene_plan.json", asset_dir, scene_glb)
+                    critic_render = output_dir / f"render_est_front_high_visual_critic_iter_{critic_iteration}.png"
+                    render_estimated_reference_view(
+                        args.blender_bin,
+                        scene_glb,
+                        output_dir / "scene_plan.json",
+                        critic_render,
+                        camera=args.final_render_pose_feedback_camera,
+                        resolution_x=args.final_render_pose_feedback_resolution_x,
+                        resolution_y=args.final_render_pose_feedback_resolution_y,
+                    )
+                    critic_comparison = make_reference_vs_render_sheet(
+                        final_pose_reference_image,
+                        critic_render,
+                        output_dir / f"reference_vs_render_est_front_high_visual_critic_iter_{critic_iteration}.png",
+                        f"TreeSAGE Flow 2 visual critic iter {critic_iteration}",
+                    )
+                    critic_after = run_visual_comparison_critic_agent(
+                        critic_comparison,
+                        output_dir,
+                        args.model,
+                        iteration=f"{critic_iteration}_after",
+                    )
+                    after_score = _visual_critic_score(critic_after)
+                    accepted_after = _visual_critic_accepts(
+                        critic_after,
+                        float(args.final_visual_critic_accept_score),
+                    )
+                    improved = bool(
+                        accepted_after
+                        or after_score >= before_score + float(FINAL_VISUAL_CRITIC_IMPROVEMENT_EPS)
+                    )
+                    iteration_report.update(
+                        {
+                            "render_after": str(critic_render),
+                            "comparison_after": str(critic_comparison),
+                            "critic_after": critic_after,
+                            "score_after": round(float(after_score), 6),
+                            "accepted_after": accepted_after,
+                            "improved": improved,
+                        }
+                    )
+                    iteration_report["generalization_gate"] = _assess_visual_critic_generalization(
+                        critic_report=critic_before,
+                        planner_report=repair_report.get("planner_report") if isinstance(repair_report, dict) else repair_planner_report,
+                        repair_report=repair_report,
+                        improved=improved,
+                        accepted=accepted_after,
+                        score_before=before_score,
+                        score_after=after_score,
+                    )
+                    if not improved:
+                        plan = pre_repair_state["plan"]
+                        support_surface_registry = pre_repair_state["support_surface_registry"]
+                        branch_summaries = pre_repair_state["branch_summaries"]
+                        reference_alignment_report = pre_repair_state["reference_alignment_report"]
+                        branch_candidates = pre_repair_state["branch_candidates"]
+                        aggregate_collision_report = pre_repair_state["aggregate_collision_report"]
+                        scene_hypergraph = pre_repair_state["scene_hypergraph"]
+                        scene_hypergraph_validation_report = pre_repair_state["scene_hypergraph_validation_report"]
+                        spatial_order_repair_report = pre_repair_state["spatial_order_repair_report"]
+                        global_validator_report = pre_repair_state["global_validator_report"]
+                        mujoco_report = pre_repair_state["mujoco_report"]
+                        render_preview(plan, output_dir / "preview_topdown.png")
+                        write_json(output_dir / "scene_plan.json", plan)
+                        write_json(output_dir / "support_surface_registry.json", support_surface_registry)
+                        write_json(output_dir / "branch_summaries.json", branch_summaries)
+                        write_json(output_dir / "scene_hypergraph.json", scene_hypergraph)
+                        write_json(output_dir / "scene_hypergraph_validation_report.json", scene_hypergraph_validation_report)
+                        write_json(output_dir / "branch_candidates.json", branch_candidates)
+                        write_json(output_dir / "aggregate_collision_report.json", aggregate_collision_report)
+                        write_json(output_dir / "global_validator_report.json", global_validator_report)
+                        write_json(output_dir / "reference_alignment_report.json", reference_alignment_report)
+                        write_json(output_dir / "spatial_order_repair_report.json", spatial_order_repair_report)
+                        write_json(output_dir / "mujoco_check.json", mujoco_report)
+                        assemble_scene_blender(args.blender_bin, output_dir / "scene_plan.json", asset_dir, scene_glb)
+                        iteration_report["rollback"] = True
+                        iteration_report["reason"] = "repair_rejected_no_critic_improvement"
+                        final_visual_critic_report["reason"] = "repair_rejected_no_critic_improvement"
+                        final_visual_critic_report["iterations"].append(iteration_report)
+                        break
+                    final_visual_critic_report["applied_fix_count"] = int(final_visual_critic_report.get("applied_fix_count", 0)) + int(
+                        repair_report.get("fix_count", 0) or 0
+                    )
+                    current_comparison_path = Path(str(critic_comparison))
+                    summary["reference_vs_render_final_visual_critic"] = str(critic_comparison)
+                    fine_spatial_order_report["visual_critic_render_after"] = str(critic_render)
+                    fine_spatial_order_report["visual_critic_comparison_after"] = str(critic_comparison)
+                    iteration_report["reason"] = "repair_accepted_by_critic_improvement"
+                    final_visual_critic_report["iterations"].append(iteration_report)
+                    if accepted_after:
+                        final_visual_critic_report["accepted"] = True
+                        final_visual_critic_report["reason"] = "critic_accepts_repaired_result"
+                        break
+                else:
+                    final_visual_critic_report.setdefault("reason", "max_iterations_reached")
+            except Exception as exc:
+                final_visual_critic_report["ok"] = False
+                final_visual_critic_report["reason"] = "agent_or_repair_error"
+                final_visual_critic_report["error"] = f"{type(exc).__name__}: {exc}"
+        elif not args.final_visual_critic_agent:
+            final_visual_critic_report["reason"] = "disabled"
+        else:
+            final_visual_critic_report["reason"] = "missing_reference_or_comparison_image"
+        generalization_gates = [
+            item.get("generalization_gate")
+            for item in final_visual_critic_report.get("iterations", [])
+            if isinstance(item, dict) and isinstance(item.get("generalization_gate"), dict)
+        ]
+        final_visual_critic_report["generalization_gate"] = {
+            "schema": "tree_sage_visual_critic_generalization_gate_summary_v1",
+            "policy": "strict_single_scene_no_promotion",
+            "flow_or_skill_update_allowed": False,
+            "experience_update_allowed": False,
+            "auto_code_change_allowed": False,
+            "iteration_count": len(generalization_gates),
+            "candidate_general_flow_issue_count": sum(
+                int(gate.get("candidate_general_flow_issue_count", 0) or 0) for gate in generalization_gates
+            ),
+            "scene_specific_issue_count": sum(
+                int(gate.get("scene_specific_issue_count", 0) or 0) for gate in generalization_gates
+            ),
+            "non_promotable_issue_count": sum(
+                int(gate.get("non_promotable_issue_count", 0) or 0) for gate in generalization_gates
+            ),
+            "reason": (
+                "Critic opinions and runtime repairs from a single reference are treated as scene-specific unless "
+                "they meet repeated/cross-reference validation thresholds."
+            ),
+        }
+        fine_spatial_order_report["final_visual_critic"] = final_visual_critic_report
+        write_json(output_dir / "final_visual_critic_report.json", final_visual_critic_report)
+        write_json(output_dir / "fine_spatial_order_report.json", fine_spatial_order_report)
+        summary["final_visual_critic_enabled"] = bool(final_visual_critic_report.get("enabled"))
+        summary["final_visual_critic_accepted"] = bool(final_visual_critic_report.get("accepted"))
+        summary["final_visual_critic_reason"] = final_visual_critic_report.get("reason")
+        summary["final_visual_critic_iteration_count"] = len(final_visual_critic_report.get("iterations", []))
+        summary["final_visual_critic_applied_fix_count"] = int(final_visual_critic_report.get("applied_fix_count", 0) or 0)
+        summary["final_visual_critic_flow_or_skill_update_allowed"] = bool(
+            final_visual_critic_report.get("generalization_gate", {}).get("flow_or_skill_update_allowed")
+            if isinstance(final_visual_critic_report.get("generalization_gate"), dict)
+            else False
+        )
+        summary["final_visual_critic_candidate_general_issue_count"] = int(
+            final_visual_critic_report.get("generalization_gate", {}).get("candidate_general_flow_issue_count", 0)
+            if isinstance(final_visual_critic_report.get("generalization_gate"), dict)
+            else 0
+        )
+        summary["final_visual_critic_report"] = str(output_dir / "final_visual_critic_report.json")
         summary["fine_spatial_order_enabled"] = bool(fine_spatial_order_report.get("enabled"))
         summary["fine_spatial_order_agent_only_ablation"] = bool(
             fine_spatial_order_report.get("agent_only_ablation")
@@ -43723,6 +47523,9 @@ def main() -> None:
         )
         summary["fine_spatial_order_bed_lamp_top_unresolved_required_count"] = int(
             fine_spatial_order_report.get("bed_lamp_top_unresolved_required_count", 0) or 0
+        )
+        summary["fine_spatial_order_post_spatial_order_repair_residual_count"] = int(
+            fine_spatial_order_report.get("post_spatial_order_repair_residual_count", 0) or 0
         )
         summary["fine_spatial_order_scale_candidate_count"] = int(
             fine_spatial_order_report.get("scale_candidate_count", 0) or 0

@@ -1,87 +1,158 @@
-# TreeSAGE Flow2 Reproduction Package
+# TreeSAGE Scene Generation Package
 
-这是当前 TreeSAGE Flow2 实验流程的可上传 GitHub 版本。它包含代码、配置模板、示例约束和说明，不包含模型权重和大体积运行产物。
+这是当前 TreeSAGE 图生场景与文生场景实验流程的 GitHub 版本。仓库只包含代码、配置、说明文档和小体积示例输入，不包含模型权重、Trellis2 生成资产、GLB 场景结果和 `/data/xy` 运行产物。
 
-## What This Runs
+## Current Pipeline
 
-Flow2 的主线是：
+系统现在有两条主链路。
+
+### Image-To-Scene
+
+图生场景主入口是 `sage/scripts/run_tree_sage_scene.py`。核心顺序是：
 
 1. 输入 reference image、prompt、可选 scene graph、可选人工约束。
-2. 用 Codex/VLM agents 建立或修正 scene graph、support tree、空间关系和细致 bbox 约束。
-3. 为每个物体读取 image2 source image，调用 TRELLIS.2 生成 GLB。
-4. 用一阶段粗布局、二阶段紧凑/碰撞修复、三阶段细致空间排序修复布局。
-5. 用 Blender 组装和渲染最终场景。
+2. 构建或修正 scene graph、support tree、物体类别、pose/scale 初值。
+3. 使用 image2 生成逐物体 source image，流程只消费这些 source images，不再自动回退 Flux。
+4. 进入 Trellis2 前做 source image QA，确认图片是目标物体、颜色接近 reference、背景干净。
+5. 用 Trellis2 `pipeline_type=512 + preprocess_image + no-WebP GLB export` 生成资产。
+6. 一阶段做粗布局和高度/scale 修正，二阶段做紧凑与碰撞修复，三阶段做细致 bbox/空间关系调整。
+7. 特殊团簇 solver 处理窗户-窗帘等固定结构。
+8. critic 默认开启，最终对 reference 与 render 进行评价，并只接受通用且验证有效的流程修正。
+9. Blender 组装最终 GLB 和诊断渲染。
 
-当前默认资产生成策略：`TRELLIS.2 pipeline_type=512 + preprocess image + texture_size=512 + no-WebP GLB export`。no-WebP 是我们修复颜色偏移后的默认导出流程。
+### Text-To-Scene
+
+文生场景主入口是 `sage/scripts/run_tree_sage_text_scene.py`。当前是 MVP，但已经接入完整可运行链路：
+
+1. 输入文本 prompt 和可选 `--room-type`。
+2. 生成 text brief、room grammar、scene graph、关系约束和多候选布局。
+3. 默认开启 text layout critic，选择最合理候选。
+4. 默认开启 `--room-texture-search`，为墙面和地板选择温和、常见的室内纹理。
+5. 纹理模块会生成实际 PNG 贴图到 `room_textures/`，并写入 `scene_plan.room.materials`。
+6. 资产有两种来源：
+   - `generate_from_scratch`: 提供 image2 单物体图目录，然后由 Trellis2 生成 GLB。
+   - `asset_library`: 直接复用已有 Trellis2 rigid asset 库。
+7. Blender 组装最终 `scene_text_sage.glb`。
+
+文生场景不会使用 Flux fallback。缺少 image2 source image 目录或缺少必需物体图片时会失败或阻塞。
 
 ## Repository Layout
 
-- `sage/scripts/run_tree_sage_scene.py`: Flow2 主入口。
-- `sage/scripts/tree_sage_flow2/`: agents、IO、reference depth、MuJoCo validation 边界模块。
-- `sage/server/trellis2_flux_bridge_server.py`: 本地 TRELLIS.2 HTTP bridge。
-- `examples/bedroom_0610_113657/`: 当前卧室 reference 的可复现实验输入。
+- `sage/scripts/run_tree_sage_scene.py`: 图生场景 Flow2 主入口。
+- `sage/scripts/run_tree_sage_text_scene.py`: 文生场景主入口。
+- `sage/scripts/tree_sage_flow2/`: 图生场景的模块化 agent、reference、validation 边界模块。
+- `sage/scripts/tree_sage_text/`: 文生场景 brief、scene graph、layout、critic、asset、texture search 模块。
+- `sage/scripts/blender_assemble_sage_scene.py`: Blender 场景组装脚本，支持房间墙面/地板 image texture。
+- `sage/server/trellis2_flux_bridge_server.py`: 本地 Trellis2 HTTP bridge。名字保留历史兼容，当前流程使用 image2 source images。
+- `sage/webui/`: 本地网页控制面板。
+- `examples/bedroom_0610_113657/`: 卧室 reference 的可复现实验输入。
 - `scripts/`: portable 启动/复现脚本。
-- `env/`: 依赖和路径模板。
-- `docs/`: 更长的设计文档和调试记录。
+- `env/`: 环境和路径模板。
+- `docs/`: 详细流程文档、调试记录和环境说明。
 
-建议新同学先读 `docs/FLOW2_MODULES_AND_EFFECTS.md`。这份文档按模块解释每一步怎么起效、输出什么报告、失败时该查哪里。
+建议先读：
 
-## Setup
+- `docs/FLOW2_MODULES_AND_EFFECTS.md`
+- `docs/MODELS_AND_ENVIRONMENT.md`
+- `sage/webui/README.md`
 
-1. 准备代码目录。
+## Environment
 
-```bash
-cd tree_sage_flow2_repro
-cp env/paths.example.env .env
-```
-
-2. 修改 `.env` 里的模型、Python 和 Blender 路径，然后加载：
-
-```bash
-source .env
-```
-
-3. 安装 orchestration 环境：
+1. 准备 Python orchestration 环境。
 
 ```bash
 conda env create -f env/conda_orchestrator.yml
 conda activate tree-sage-flow2
 ```
 
-或使用已有 venv 后：
+或使用已有 venv：
 
 ```bash
 pip install -r env/orchestrator_requirements.txt
 ```
 
-4. 准备 TRELLIS.2 环境和模型。细节见 `docs/MODELS_AND_ENVIRONMENT.md`。
+2. 准备本机路径配置。
 
-## Start TRELLIS.2 Bridge
+```bash
+cp env/paths.example.env .env
+source .env
+```
+
+需要按机器实际路径配置：
+
+- Python/venv 路径
+- Blender 路径
+- Trellis2 repo、模型和环境
+- 默认输出目录，建议放在 `/data/xy/SAGE_runs/...`
+
+3. 安装/准备 Trellis2。
+
+Trellis2 模型权重不放进 GitHub。详细说明见 `docs/MODELS_AND_ENVIRONMENT.md`。我们当前默认使用：
+
+- `pipeline_type=512`
+- `preprocess_image=True`
+- `texture_size=1024`
+- `decimation_target=120000`
+- no-WebP GLB export
+
+## Start Services
+
+启动 Trellis2 bridge：
 
 ```bash
 source .env
 scripts/start_trellis2_bridge_512_no_webp.sh
 ```
 
-服务默认监听 `http://127.0.0.1:8082`。保持这个终端运行。
+服务默认监听：
 
-## Prepare Bedroom Source Images
-
-在原机器上可以直接复制我们 image2 生成的逐物体源图：
-
-```bash
-scripts/prepare_bedroom_source_images_from_local.sh
+```text
+http://127.0.0.1:8082
 ```
 
-在新机器上，把 `examples/bedroom_0610_113657/source_images_manifest.txt` 里的文件放到：
+启动本地 WebUI：
 
 ```bash
-examples/bedroom_0610_113657/source_images/
+/data/xy/SAGE_repro/venv/bin/python /home/xy/SAGE/sage/webui/server.py --host 127.0.0.1 --port 8787
 ```
 
-这些图片由 image2 按“reference + 单个物体文本，正面孤立照片”生成。进入 TRELLIS.2 前需要人工或脚本检查图片是否确实是目标物体、颜色是否接近 reference、背景是否干净。
+打开：
 
-## Run Reproduction
+```text
+http://127.0.0.1:8787/
+```
+
+WebUI 默认数据根目录：
+
+```text
+/data/xy/SAGE_runs/webui/
+```
+
+其中：
+
+- `runs/`: 场景输出
+- `jobs/`: job 记录和日志
+- `source_images/`: image2 单物体图默认根目录
+
+可以用环境变量覆盖：
+
+- `SAGE_WEBUI_DATA_ROOT`
+- `SAGE_WEBUI_OUTPUT_ROOT`
+- `SAGE_WEBUI_JOBS_DIR`
+- `SAGE_WEBUI_ASSET_SOURCE_ROOT`
+
+## Image2 Source Images
+
+当前流程要求先为每个物体准备 image2 source image。推荐方式：
+
+1. 输入 reference 和目标物体文本。
+2. 生成单个物体的正面、孤立、干净背景图。
+3. 文件名与 object id 对齐，例如 `bed.png`、`window.png`、`left_curtain.png`。
+4. 进入 Trellis2 前先 QA：物体类别正确、主要颜色正确、没有多余场景背景。
+
+文生场景从 0 生成资产时，WebUI/API 需要填写 source image 目录；后台只消费这些图片，不负责自动调用 Flux。
+
+## Run Image-To-Scene Example
 
 无人工约束版：
 
@@ -97,14 +168,14 @@ source .env
 scripts/run_bedroom_0610_113657_manual.sh
 ```
 
-只检查 planning 是否能跑通，不生成资产：
+只检查 planning，不生成资产：
 
 ```bash
 source .env
 scripts/run_bedroom_0610_113657_plan_only_smoke.sh
 ```
 
-主要输出在 `SAGE_OUTPUT_DIR`，默认是 `/data/xy/SAGE_runs/tree_sage_flow2/...`。重点看：
+重点输出：
 
 - `scene_tree_sage_flow2.glb`
 - `scene_plan.json`
@@ -114,10 +185,76 @@ scripts/run_bedroom_0610_113657_plan_only_smoke.sh
 - `asset_registry.json`
 - `run_summary.json`
 
-## Notes For New References
+## Run Text-To-Scene
 
-- 如果是新 reference，先生成逐物体 image2 source images，再放到一个新的 `source_images/` 目录。
-- 运行前先检查 source images；床、柜子、窗帘这种纹理/颜色容易影响 Trellis2 结果。
-- 窗户窗帘簇按固定顺序处理：左窗帘、窗户、右窗帘；solver 会按 reference 判断 tight/medium/loose 紧密程度。
-- 人工约束文件是可选模块，格式见 `examples/bedroom_0610_113657/human_constraints_manual_bbox_v1.json`。
-- 如果只想看布局流程，可以先用 `--plan-only` 或 `--reuse-asset-dir`，避免每次重跑 TRELLIS.2。
+使用资产库复用：
+
+```bash
+/data/xy/SAGE_repro/venv/bin/python sage/scripts/run_tree_sage_text_scene.py \
+  --prompt-file prompt.txt \
+  --output-dir /data/xy/SAGE_runs/webui/runs/my_text_scene \
+  --room-type living_room \
+  --asset-strategy asset_library \
+  --asset-pipeline asset_library \
+  --trellis-asset-library-dir /path/to/assets_text_scene \
+  --candidate-count 3 \
+  --layout-critic \
+  --room-texture-search \
+  --assemble-scene
+```
+
+从 image2 source images 生成资产：
+
+```bash
+/data/xy/SAGE_repro/venv/bin/python sage/scripts/run_tree_sage_text_scene.py \
+  --prompt-file prompt.txt \
+  --output-dir /data/xy/SAGE_runs/webui/runs/my_text_scene \
+  --room-type living_room \
+  --asset-strategy generate_from_scratch \
+  --asset-pipeline source_images \
+  --asset-source-image-dir /data/xy/SAGE_runs/webui/source_images/my_scene/source_images \
+  --asset-source-image-required \
+  --asset-source-image-qa-strict \
+  --candidate-count 3 \
+  --layout-critic \
+  --room-texture-search \
+  --assemble-scene
+```
+
+文生重点输出：
+
+- `scene_text_sage.glb`
+- `scene_plan.json`
+- `layout_preview.svg`
+- `text_scene_brief.json`
+- `text_scene_scene_graph.json`
+- `text_scene_constraints.json`
+- `text_scene_critic.json`
+- `text_scene_texture_search.json`
+- `room_textures/wall_texture.png`
+- `room_textures/floor_texture.png`
+- `text_scene_asset_pipeline_report.json`
+- `summary.json`
+
+## Room Texture Search
+
+文生场景默认开启纹理搜索模块。它根据 `room_type`、style tags 和 prompt 选择温和的墙面/地板方案：
+
+- 墙面优先选择 warm greige painted plaster、soft warm white limewash、quiet taupe matte paint 等低对比纹理。
+- 地板优先选择 low-sheen natural oak、white oak、honey oak 或卧室低绒 carpet。
+- 显式 prompt 信息优先级高于泛化 style，例如 prompt 写了 `beige walls` 会优先选 warm greige，而不是被 `industrial` tag 拉到灰墙。
+- 模块会生成 PNG 贴图，避免 Blender procedural 节点导出 GLB 后丢失。
+
+参考信息记录在 `text_scene_texture_search.json`，便于后续审查。
+
+## GitHub Size Rules
+
+不要提交：
+
+- `/data/xy` 下的运行结果
+- Trellis2 模型权重
+- 生成出来的 `.glb`
+- `runs/`、`jobs/`、`room_textures/` 大批量实验产物
+- `__pycache__/`
+
+需要共享结果时，优先共享路径、summary、诊断图或小规模示例输入。
