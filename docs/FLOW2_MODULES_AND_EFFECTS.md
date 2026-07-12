@@ -303,6 +303,23 @@ glb_webp = false
 --pipeline-type 512 --trellis-preprocess-image --texture-size 512 --decimation-target 500000
 ```
 
+### 8.2.1 文生场景扩展：资产风格一致性
+
+文生场景没有 reference 图来约束每个物体的颜色和材质，因此在进入 image2 单物体图生成前，会先建立一个全局资产风格规格：
+
+1. 从 prompt、room type 和 style tags 中提取主色、木色、金属色、布料材质和需要避免的颜色/材质。
+2. 选择少量 anchor 物体，例如卧室的床/地毯/衣柜，客厅的沙发/地毯/茶几。
+3. 先生成并 QA anchor 物体图。
+4. 后续物体的 image2 prompt 会引用通过 QA 的 anchor 图，要求材质、光照、色温和整体风格一致，但不复制形状。
+5. source image QA 会额外写入风格一致性检查结果；默认只告警，不阻塞流程，必要时可打开 strict QA。
+
+这个模块只改变文生场景的 image2 生成计划和 source image QA，不改变已有图生场景的布局求解逻辑。它输出：
+
+- `text_scene_asset_style_spec.json`
+- `text_scene_image2_generation_plan.json`
+- `scene_plan.asset_style_spec`
+- `scene_plan.image2_generation_plan`
+
 ### 8.3 输出
 
 关键报告和目录：
@@ -727,4 +744,3 @@ Stage 1 先放出粗位置
 7. 最后用 Blender 渲染和全局验证检查结果，所有中间过程都有 report 可追踪。
 
 这条主线能说明：我们的系统是一个可解释、可调试、可复现的闭环流程，而不是单次模型调用。
-

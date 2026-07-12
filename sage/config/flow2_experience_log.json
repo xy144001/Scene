@@ -139,6 +139,24 @@
       "suggested_use": "Before third-stage fine refinement, run a reference/comparison-image agent over the current layout units and ask for x/y/z endpoint constraints: `unit.low|center|high <= unit.low|center|high` or approximate equality. Treat window/curtain/rod assemblies as locked units, let deterministic code apply bounded translations or grounded height scales, and reject the fine stage when required endpoint constraints remain unresolved."
     },
     {
+      "id": "fine_stage_containment_endpoint_direction_must_be_normalized",
+      "status": "reference",
+      "occurrences": 2,
+      "first_seen_run": "flow2_density_floor_material_20260622_img0610_211046_reuse_assets_two_stage",
+      "last_validated_run": "flow2_img0610_113657_reuse_assets_fixed_scene_20260703_v4",
+      "observation": "Agent evidence can correctly say that one object is narrower/contained inside another span while the structured endpoint relations reverse the low/high inequality. In v4, landscape_wall_art was described as narrower than and contained over queen_bed, but the emitted required constraints were `art.low <= bed.low` and `bed.high <= art.high`, which demands the art span wider than the bed and made fine-stage acceptance impossible. A similar endpoint-direction risk already appeared in rug containment, which needed a dedicated floor-covering repair.",
+      "suggested_use": "Before applying fine detailed endpoint constraints, normalize containment signs from the evidence and current/reference spans. For a narrower unit inside a wider unit, enforce `wider.low <= narrower.low` and `narrower.high <= wider.high`; record a relation repair instead of treating the reversed agent JSON as a hard scene failure."
+    },
+    {
+      "id": "tabletop_reference_order_must_drive_support_packing",
+      "status": "reference",
+      "occurrences": 2,
+      "first_seen_run": "flow2_img0610_113657_reuse_assets_fixed_scene_20260703_v3_review",
+      "last_validated_run": "flow2_img0610_113657_reuse_assets_fixed_scene_20260703_v4",
+      "observation": "The reference spatial-order and tabletop agents can correctly identify local tabletop order, but later support snapping/packing may ignore it and sort by current bbox centers. This made left_nightstand lamp/clock and left_dresser plant/books drift into a visually wrong order even though their support ids were valid.",
+      "suggested_use": "Feed `scope=tabletop` reference order groups into tabletop/sibling packing for every support surface, and rerun that packing after final support settling, density backoff, fine-stage parent moves, and render-pose feedback. A valid support snap is not enough if the local left/right or front/back reference order is lost."
+    },
+    {
       "id": "wall_flat_assets_should_not_use_broad_thin_artifact_cleanup",
       "status": "reference",
       "occurrences": 1,
@@ -969,6 +987,96 @@
             "last_validated_run": "flow2_depth_residual_fix_20260622/img0610_113657_reuse_assets_underlay_sidewall_fix",
             "observation": "The current run reused a scene graph that omitted the large landscape art above the bed and instead placed `framed wall art` inside `queen_bed` integrated soft details. Older good runs had a separate `landscape_art`/`landscape_wall_art` object. The semantic agent noticed the missing art in notes, but the merge layer previously could only update existing objects and could not add the missing wall-mounted object.",
             "suggested_use": "Treat framed wall art, paintings, pictures, posters, mirrors, and clocks as rigid wall-attached objects, never as bed/sofa textile details. Scrub these phrases from bed/sofa integrated-detail prompts, and allow the semantic agent to materialize high-confidence missing rigid wall-mounted objects with an `attached_to wall_*` relation."
+        },
+        {
+            "id": "canonical_front_nonvisual_fallback_must_not_override_wall_flats",
+            "status": "skill",
+            "occurrences": 2,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v3",
+            "last_validated_run": "code_fix_20260707_pending_render",
+            "observation": "Wall art and other wall-flat assets had correct pose-review/wall-flush orientation, but the asset canonical-front turntable render failed and the merge step accepted a local-directional fallback. That fallback rewrote `front_yaw_offset_degrees` and rotated wall art 90 degrees even though no visual front evidence existed.",
+            "suggested_use": "If canonical-front detection is based on a failed render, failed agent call, or local directional defaults, do not apply it to wall art, doors, windows, curtains, mirrors, posters, or similar wall-flat visual assets. Keep the existing wall-flush or final-pose orientation and record a skipped nonvisual fallback in the merge report."
+        },
+        {
+            "id": "curtain_panel_fallback_requires_blocking_asset_failure",
+            "status": "skill",
+            "occurrences": 2,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v3",
+            "last_validated_run": "code_fix_20260707_pending_render",
+            "observation": "Curtain panels were replaced by generic parametric curtain assets even when the asset registry reported `quality: ok` and no blocking warnings. The replacement made the paired curtains look asymmetric or generic, masking whether Trellis2 or the assembly solver was actually responsible.",
+            "suggested_use": "Default curtain-panel procedural fallback off. Preserve readable Trellis2/reused curtain panels when QA is ok, and fallback only for missing files, fragmentation, blank/unreadable geometry, white-base/artifact failures, or explicit blocking QA warnings. Curtain symmetry and tightness should be solved by the window-curtain assembly module, not by unconditional asset replacement."
+        },
+        {
+            "id": "table_anchor_detection_must_ignore_supported_tabletop_children",
+            "status": "skill",
+            "occurrences": 2,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v3",
+            "last_validated_run": "code_fix_20260707_pending_render",
+            "observation": "`desk_plant` was treated as a table anchor because the fallback identity matcher searched object ids for `desk` before ruling out supported tabletop children. The workstation solver then built clusters around the wrong anchor and could move chairs/tables in visually impossible ways.",
+            "suggested_use": "Before matching `desk`, `table`, `counter`, or `island` in ids/categories, reject objects with tabletop-child identities or support relations: plants, lamps, vases, clocks, books, frames, photos, small decor, pillows, and any object supported by another non-wall object. Functional clusters should also revalidate that the table member is a floor or wall-backed table anchor before applying tuck priors."
+        },
+        {
+            "id": "desk_chair_tuck_collision_exemption_must_be_bounded",
+            "status": "skill",
+            "occurrences": 2,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v3",
+            "last_validated_run": "code_fix_20260707_pending_render",
+            "observation": "The desk-chair collision exemption accepted any pair recognized as a workstation tuck pair. If the solver over-inserted the chair into the desk, aggregate collision could still pass because the whole pair was exempt.",
+            "suggested_use": "Keep a geometric tuck step, but make the collision exemption shallow and bounded. A small chair-front overlap with a table is valid; full-width or full-depth penetration should remain an aggregate collision and trigger a local repair or tuck backoff."
+        },
+        {
+            "id": "wall_doors_need_tangent_width_and_absolute_wall_position_checks",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v3",
+            "last_validated_run": "code_fix_20260707_pending_render",
+            "observation": "The side-wall door was not primarily wrong because of its relation to the nearby dresser; the visible problem was an implausibly narrow wall-axis span and an absolute wall position that did not match the reference. Thin-depth clamping alone preserved wall contact but did not protect the door's wall-tangent size.",
+            "suggested_use": "Debug wall-attached doors with separate checks for wall contact, wall-tangent span, floor grounding, absolute wall-local coordinate, and same-wall storage order. Apply a minimum single-door wall-axis width, a wider bound for double/closet/sliding doors, and only then evaluate door/dresser or door/wardrobe relative ordering."
+        },
+        {
+            "id": "weak_side_storage_gap_must_not_push_centered_bed_branch_right",
+            "status": "skill",
+            "occurrences": 2,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v6_bugfix_no_clean",
+            "last_validated_run": "code_fix_20260707_pending_render",
+            "observation": "The reference-consistency pass alternated between a central-bed prior and a `left_storage_to_bedside_reference_gap` correction. Because the storage-gap rule allowed positive x motion, each repeated pass pushed the bed, both nightstands, and supported tabletop children rightward after the center prior had just corrected them. The final accepted run landed on the right-shifted state even though the bed should stay near the room center.",
+            "suggested_use": "For oblique bedroom references, treat side-wall storage/table to bedside image-space gaps as weak one-sided evidence. They may pull an over-left or overcrowded bed branch toward center, but must not push a central main bed branch right of the center prior. Suppress positive rightward shifts when the bed is already at the center limit, log the suppressed evidence, and avoid multi-pass oscillation between incompatible heuristics."
+        },
+        {
+            "id": "workstation_chair_must_follow_later_table_anchor_moves",
+            "status": "skill",
+            "occurrences": 2,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v7_bed_center_guard",
+            "last_validated_run": "code_fix_20260707_pending_render",
+            "observation": "The desk-chair tuck solver initially placed the chair relative to the desk's old wall-tangent coordinate, but a later reference-depth side-wall alignment moved the desk toward the foreground and only moved supported tabletop children. Since the chair is a floor functional companion rather than a support child, it stayed at the obsolete y coordinate and appeared beside the bed instead of at the desk. In a follow-up run, generic density collision repair also moved `office_chair` away from `desk` as an ordinary floor branch, again breaking the workstation cluster.",
+            "suggested_use": "Whenever side-wall reference-depth alignment, density compaction, per-wall audit, final polish, or generic collision repair moves a desk/table anchor or workstation chair, rerun the desk-chair tuck solver. Report table-move propagation as moved functional companions, and report post-collision retuck as its own pass so collision repair cannot permanently separate a functional desk-chair pair."
+        },
+        {
+            "id": "trellis_curtain_axis_must_use_blender_visual_orientation",
+            "status": "skill",
+            "occurrences": 2,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v9_workstation_retuck_closure",
+            "last_validated_run": "flow2_img0706_201301_image2_trellis512_door_v11_curtain_axis_and_no_fallback",
+            "observation": "`curtain_reference_scene_trellis_compare.png` and six-axis debug renders showed that the Trellis2 curtain assets had a valid visible face, but the flow's curtain axis normalizer used raw trimesh bounds and changed `asset_axis_to_z` from the imported default 2 to 1. That made the scene pose treat the good curtain face as the wrong local axis. A second issue then allowed the generic parametric curtain fallback to overwrite readable Trellis2 panels when QA reported extreme axis compression.",
+            "suggested_use": "For Trellis2/glTF curtain panels, keep the imported/default `asset_axis_to_z=2` unless a Blender six-axis render proves the asset is sideways. Do not use raw trimesh bbox alone to remap curtain z/up axes. Keep procedural curtain fallback opt-in or limited to missing, blank, fragmented, unreadable, or explicitly failed curtain assets; ordinary axis-compression warnings should be handled by curtain assembly and pose repair."
+        },
+        {
+            "id": "final_visual_critic_repairs_need_before_after_acceptance",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v11_curtain_axis_and_no_fallback_visual_critic_probe",
+            "last_validated_run": "code_fix_20260707_final_visual_critic_loop",
+            "observation": "A side-by-side visual critic correctly identified the over-stretched bed and weak window/curtain cluster, but the useful output was a repair target, not proof that source code or skill rules should change. A deterministic repair must be applied, rerendered, and accepted only if a follow-up critic score improves or reaches acceptance.",
+            "suggested_use": "Run the final critic as a bounded loop: critic -> classify issue as flow/module, asset/run, camera/evaluation, or unknown -> plan bounded repair actions -> rerender -> accept only if critic improves or is satisfied. Treat object moves, object scales, yaw snaps, bed-depth limits, and scene-specific placement edits as runtime repairs only. Promote code, skill, or experience changes only from repeated/cross-reference validated repair records that map to a clear module invariant and pass human review, never from one-off critic text."
+        },
+        {
+            "id": "window_curtain_cluster_needs_top_edge_lock",
+            "status": "reference",
+            "occurrences": 1,
+            "first_seen_run": "flow2_img0706_201301_image2_trellis512_door_v11_curtain_axis_and_no_fallback_visual_critic_probe",
+            "last_validated_run": "code_fix_20260707_window_curtain_vertical_edge_lock_unit_probe",
+            "observation": "The tangent order and tight left/right gap of a window-curtain cluster can be correct while the vertical relation is visibly wrong. In the v11 probe, the window top was around 2.15m but curtain tops were around 2.44-2.49m and asymmetric, making the cluster look fragmented despite valid Trellis curtain assets.",
+            "suggested_use": "After every window-curtain tangent assembly and final repair pass, enforce a cluster-level vertical invariant: paired curtains share height and bottom line, curtain top edges stay close to the window top/rod line with a bounded reference-derived offset, and the rod follows the resulting group top. Use curtain scaling before moving wall decor or stretching adjacent storage."
         }
     ]
 }

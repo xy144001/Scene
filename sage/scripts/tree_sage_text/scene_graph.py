@@ -69,6 +69,26 @@ def build_text_scene_graph(brief: dict[str, Any], asset_strategy: str) -> dict[s
             relations.append(_relation("attached_to", "tv", "wall_north", 0.9, "TV is mounted above or behind media console."))
         if {"rug", "coffee_table"} <= ids:
             relations.append(_relation("under", "rug", "coffee_table", 0.85, "Living room rug anchors the seating group."))
+        if {"left_bookcase", "tv_stand"} <= ids:
+            relations.append(_relation("against_wall", "left_bookcase", "wall_north", 0.82, "Built-in bookcases flank the media wall."))
+            relations.append(_relation("left_of", "left_bookcase", "tv_stand", 0.82, "Left bookcase sits beside the media console."))
+        if {"right_bookcase", "tv_stand"} <= ids:
+            relations.append(_relation("against_wall", "right_bookcase", "wall_north", 0.82, "Built-in bookcases flank the media wall."))
+            relations.append(_relation("right_of", "right_bookcase", "tv_stand", 0.82, "Right bookcase sits beside the media console."))
+        if {"accent_chair", "coffee_table"} <= ids:
+            relations.append(_relation("near", "accent_chair", "coffee_table", 0.78, "Accent chair joins the living room seating group."))
+        if {"left_side_table", "sofa"} <= ids:
+            relations.append(_relation("left_of", "left_side_table", "sofa", 0.78, "Side tables flank the sofa."))
+            relations.append(_relation("near", "left_side_table", "sofa", 0.82, "Side table should stay close to sofa arm."))
+        if {"right_side_table", "sofa"} <= ids:
+            relations.append(_relation("right_of", "right_side_table", "sofa", 0.78, "Side tables flank the sofa."))
+            relations.append(_relation("near", "right_side_table", "sofa", 0.82, "Side table should stay close to sofa arm."))
+        if {"stacked_books", "coffee_table"} <= ids:
+            relations.append(_relation("on", "stacked_books", "coffee_table", 0.9, "Decorative books sit on the coffee table."))
+        if {"ceramic_vase", "coffee_table"} <= ids:
+            relations.append(_relation("on", "ceramic_vase", "coffee_table", 0.9, "Ceramic vase sits on the coffee table."))
+        if {"woven_basket", "sofa"} <= ids:
+            relations.append(_relation("near", "woven_basket", "sofa", 0.72, "Woven basket is floor decor near the sofa."))
 
     if room_type == "study":
         if "desk" in ids:

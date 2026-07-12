@@ -149,6 +149,72 @@ OBJECT_LIBRARY: dict[str, dict[str, Any]] = {
         "layout_role": "wall_storage",
         "description": "bookcase against a wall",
     },
+    "left_bookcase": {
+        "category": "bookcase",
+        "dimensions": dims(0.72, 0.34, 1.9),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "media_wall_storage",
+        "description": "left slim bookcase with books and ceramics",
+    },
+    "right_bookcase": {
+        "category": "bookcase",
+        "dimensions": dims(0.72, 0.34, 1.9),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "media_wall_storage",
+        "description": "right slim bookcase with books and ceramics",
+    },
+    "accent_chair": {
+        "category": "chair",
+        "dimensions": dims(0.72, 0.74, 0.86),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "secondary_seating",
+        "description": "upholstered living room accent chair",
+    },
+    "left_side_table": {
+        "category": "side_table",
+        "dimensions": dims(0.44, 0.44, 0.48),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "sofa_side_table",
+        "description": "left small side table beside sofa",
+    },
+    "right_side_table": {
+        "category": "side_table",
+        "dimensions": dims(0.44, 0.44, 0.48),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "sofa_side_table",
+        "description": "right small side table beside sofa",
+    },
+    "woven_basket": {
+        "category": "basket",
+        "dimensions": dims(0.42, 0.42, 0.4),
+        "placement_type": "floor",
+        "semantic_class": "floor_decor",
+        "layout_role": "soft_storage_decor",
+        "description": "woven storage basket",
+    },
+    "stacked_books": {
+        "category": "books",
+        "dimensions": dims(0.34, 0.24, 0.12),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "tabletop_decor",
+        "support_id": "coffee_table",
+        "description": "small stack of decorative books",
+    },
+    "ceramic_vase": {
+        "category": "vase",
+        "dimensions": dims(0.22, 0.22, 0.34),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "tabletop_decor",
+        "support_id": "coffee_table",
+        "description": "neutral ceramic vase",
+    },
     "rug": {
         "category": "rug",
         "dimensions": dims(2.7, 2.4, 0.025),
@@ -267,6 +333,12 @@ EXPLICIT_EXPANSION = {
     "window": ["window"],
     "desk": ["desk", "office_chair"],
     "chair": ["office_chair"],
+    "accent_chair": ["accent_chair"],
+    "bookcase": ["bookcase"],
+    "side_table": ["left_side_table", "right_side_table"],
+    "basket": ["woven_basket"],
+    "books": ["stacked_books"],
+    "ceramics": ["ceramic_vase"],
     "tv": ["tv", "tv_stand"],
 }
 
@@ -301,7 +373,12 @@ def object_ids_for_brief(brief: dict[str, Any]) -> list[str]:
     explicit = brief.get("explicit_object_types")
     if isinstance(explicit, list):
         for object_type in explicit:
-            expansions = EXPLICIT_EXPANSION.get(str(object_type), [str(object_type)])
+            if room_type == "living_room" and str(object_type) == "bookcase":
+                expansions = ["left_bookcase", "right_bookcase"]
+            elif room_type == "living_room" and str(object_type) == "chair":
+                expansions = ["accent_chair"]
+            else:
+                expansions = EXPLICIT_EXPANSION.get(str(object_type), [str(object_type)])
             for object_id in expansions:
                 if object_id in OBJECT_LIBRARY and object_id not in object_ids:
                     object_ids.append(object_id)

@@ -91,8 +91,8 @@ Trellis2 模型权重不放进 GitHub。详细说明见 `docs/MODELS_AND_ENVIRON
 
 - `pipeline_type=512`
 - `preprocess_image=True`
-- `texture_size=1024`
-- `decimation_target=120000`
+- `texture_size=2048`
+- `decimation_target=500000`
 - no-WebP GLB export
 
 ## Start Services

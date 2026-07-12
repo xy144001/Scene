@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .asset_style import apply_asset_style_to_scene_graph, build_asset_style_spec, build_image2_generation_plan
 from .assets import ensure_assets_and_scene
 from .brief import build_text_scene_brief
 from .constraints import synthesize_constraints
@@ -46,8 +47,16 @@ def run_text_scene_pipeline(args: Any) -> dict[str, Any]:
     )
     write_json(output_dir / "text_scene_brief.json", brief)
 
+    asset_style_spec = None
+    image2_generation_plan = None
     texture_report = None
     scene_graph = build_text_scene_graph(brief, asset_strategy=str(args.asset_strategy))
+    if bool(getattr(args, "asset_style_consistency", True)):
+        asset_style_spec = build_asset_style_spec(brief, scene_graph)
+        scene_graph = apply_asset_style_to_scene_graph(scene_graph, asset_style_spec)
+        image2_generation_plan = build_image2_generation_plan(scene_graph, asset_style_spec)
+        write_json(output_dir / "text_scene_asset_style_spec.json", asset_style_spec)
+        write_json(output_dir / "text_scene_image2_generation_plan.json", image2_generation_plan)
     if bool(getattr(args, "room_texture_search", True)):
         texture_report = build_room_texture_search_plan(brief, prompt)
         texture_report = materialize_room_texture_images(texture_report, output_dir / "room_textures")
@@ -95,6 +104,11 @@ def run_text_scene_pipeline(args: Any) -> dict[str, Any]:
     }
     if texture_report is not None:
         selected_plan["text_scene_reports"]["texture_search"] = str(output_dir / "text_scene_texture_search.json")
+    if asset_style_spec is not None:
+        selected_plan["asset_style_spec"] = asset_style_spec
+        selected_plan["image2_generation_plan"] = image2_generation_plan
+        selected_plan["text_scene_reports"]["asset_style_spec"] = str(output_dir / "text_scene_asset_style_spec.json")
+        selected_plan["text_scene_reports"]["image2_generation_plan"] = str(output_dir / "text_scene_image2_generation_plan.json")
     scene_plan_path = output_dir / "scene_plan.json"
     selected_plan["asset_pipeline_status"] = {
         "strategy": str(args.asset_strategy),
@@ -140,5 +154,8 @@ def run_text_scene_pipeline(args: Any) -> dict[str, Any]:
     }
     if texture_report is not None:
         summary["texture_search"] = str(output_dir / "text_scene_texture_search.json")
+    if asset_style_spec is not None:
+        summary["asset_style_spec"] = str(output_dir / "text_scene_asset_style_spec.json")
+        summary["image2_generation_plan"] = str(output_dir / "text_scene_image2_generation_plan.json")
     write_json(output_dir / "summary.json", summary)
     return summary

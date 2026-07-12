@@ -69,24 +69,33 @@ def _objects_by_id(objects: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 
 def _support_children(objects: dict[str, dict[str, Any]]) -> None:
+    grouped: dict[str, list[dict[str, Any]]] = {}
     for obj in objects.values():
         support_id = obj.get("agent_semantics", {}).get("support_hint")
         if not support_id or support_id == "floor" or support_id not in objects:
             continue
+        grouped.setdefault(str(support_id), []).append(obj)
+    for support_id, children in grouped.items():
         support = objects[str(support_id)]
         sw, sl, sh = _dims(support)
-        _, _, height = _dims(obj)
         sx, sy = float(support.get("x", 0.0)), float(support.get("y", 0.0))
-        offset_x = min(0.12, max(0.0, sw * 0.18))
-        if str(obj.get("id", "")).startswith("left_"):
-            offset_x = -offset_x
-        _set_pose(obj, sx + offset_x, sy, float(support.get("z", 0.0)) + sh, 0.0)
-        obj["support_id"] = support_id
-        obj["placement_type"] = "support"
-        obj["support_surface_z"] = round(float(support.get("z", 0.0)) + sh, 4)
-        obj["z"] = round(float(support.get("z", 0.0)) + sh, 4)
-        obj["agent_semantics"]["support_hint"] = support_id
-        obj["agent_semantics"]["support_height_source"] = "text_scene_support_surface"
+        count = max(1, len(children))
+        for index, obj in enumerate(children):
+            _, _, height = _dims(obj)
+            span = min(max(sw * 0.45, 0.18), max(sw - 0.18, 0.18))
+            normalized = 0.0 if count == 1 else (index / (count - 1)) - 0.5
+            offset_x = normalized * span
+            if str(obj.get("id", "")).startswith("left_"):
+                offset_x = -abs(offset_x or min(0.12, sw * 0.18))
+            elif str(obj.get("id", "")).startswith("right_"):
+                offset_x = abs(offset_x or min(0.12, sw * 0.18))
+            _set_pose(obj, sx + offset_x, sy, float(support.get("z", 0.0)) + sh, 0.0)
+            obj["support_id"] = support_id
+            obj["placement_type"] = "support"
+            obj["support_surface_z"] = round(float(support.get("z", 0.0)) + sh, 4)
+            obj["z"] = round(float(support.get("z", 0.0)) + sh, 4)
+            obj["agent_semantics"]["support_hint"] = support_id
+            obj["agent_semantics"]["support_height_source"] = "text_scene_support_surface"
 
 
 def _place_ceiling(objects: dict[str, dict[str, Any]], room: dict[str, Any]) -> None:
@@ -203,6 +212,10 @@ def _living_room_layout(objects: dict[str, dict[str, Any]], room: dict[str, Any]
         _set_pose(objects["rug"], float(table.get("x", room_w / 2.0)) if table else room_w / 2.0, float(table.get("y", room_l / 2.0)) if table else room_l / 2.0, 0.0, 0.0)
     if "tv_stand" in objects:
         _place_against_wall(objects["tv_stand"], room, "wall_north", room_w / 2.0)
+    if "left_bookcase" in objects:
+        _place_against_wall(objects["left_bookcase"], room, "wall_north", max(0.7, room_w / 2.0 - 1.35))
+    if "right_bookcase" in objects:
+        _place_against_wall(objects["right_bookcase"], room, "wall_north", min(room_w - 0.7, room_w / 2.0 + 1.35))
     if "tv" in objects:
         _place_wall_fixture(objects["tv"], room, "wall_north", room_w / 2.0, 1.25)
     if "bookcase" in objects:
@@ -213,6 +226,33 @@ def _living_room_layout(objects: dict[str, dict[str, Any]], room: dict[str, Any]
         _set_pose(objects["floor_lamp"], 0.7, 1.1, 0.0, 0.0)
     if "plant" in objects:
         _set_pose(objects["plant"], room_w - 0.55, 0.75, 0.0, 0.0)
+    if "left_side_table" in objects and "sofa" in objects:
+        sofa = objects["sofa"]
+        sw, sl, _ = _dims(sofa)
+        stw, stl, _ = _dims(objects["left_side_table"])
+        _set_pose(objects["left_side_table"], float(sofa["x"]) - sw / 2.0 - stw / 2.0 - 0.12, float(sofa["y"]) + 0.05, 0.0, 180.0)
+    if "right_side_table" in objects and "sofa" in objects:
+        sofa = objects["sofa"]
+        sw, sl, _ = _dims(sofa)
+        stw, stl, _ = _dims(objects["right_side_table"])
+        _set_pose(objects["right_side_table"], float(sofa["x"]) + sw / 2.0 + stw / 2.0 + 0.12, float(sofa["y"]) + 0.05, 0.0, 180.0)
+    if "accent_chair" in objects:
+        table = objects.get("coffee_table")
+        if table:
+            _set_pose(objects["accent_chair"], min(room_w - 0.85, float(table["x"]) + 1.45), float(table["y"]) + 0.25, 0.0, 270.0)
+            objects["accent_chair"]["functional_cluster_id"] = "living_room_seating_cluster_01"
+            table["functional_cluster_id"] = "living_room_seating_cluster_01"
+    if "woven_basket" in objects and "sofa" in objects:
+        sofa = objects["sofa"]
+        _, sofa_l, _ = _dims(sofa)
+        basket_w, basket_l, _ = _dims(objects["woven_basket"])
+        _set_pose(
+            objects["woven_basket"],
+            max(0.45, float(sofa["x"]) - 1.2),
+            min(room_l - 0.65, float(sofa["y"]) + sofa_l / 2.0 + basket_l / 2.0 + 0.12),
+            0.0,
+            0.0,
+        )
     _place_window_cluster(objects, room, "wall_west", room_l * 0.63)
     _place_door(objects, room, "wall_east")
 

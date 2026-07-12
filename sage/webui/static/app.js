@@ -82,9 +82,9 @@ function renderPlan(plan) {
   lines.push(plan.implemented ? "配置可创建任务" : "当前配置仅预留接口");
   if (plan.outputDir) lines.push(`输出目录：${plan.outputDir}`);
   if (plan.mode === "text_to_scene" && plan.assetStrategy === "generate_from_scratch") {
-    lines.push("资产链路：image2 单物体图 -> QA -> Trellis2 -> 纹理选择 -> Blender");
+    lines.push("资产链路：风格规格 -> image2 单物体图 -> QA -> Trellis2 -> 纹理选择 -> Blender");
   } else if (plan.assetStrategy === "asset_library") {
-    lines.push("资产链路：资产库复用 -> 纹理选择 -> Blender");
+    lines.push("资产链路：风格规格 -> 资产库复用 -> 纹理选择 -> Blender");
   }
   $("planSummary").textContent = lines.join("\n");
   renderWarnings(plan.warnings || []);
@@ -169,8 +169,8 @@ function applyDefaults(config) {
   $("assetSourceImageDir").placeholder = `${defaults.assetSourceRoot || "/data/xy/SAGE_runs/image2_replacement"}/.../source_images`;
   $("textAssetSourceImageDir").placeholder = `${defaults.assetSourceRoot || "/data/xy/SAGE_runs/image2_replacement"}/.../source_images`;
   $("trellisPipelineType").value = defaults.trellisPipelineType || "512";
-  $("textureSize").value = defaults.textureSize || 1024;
-  $("decimationTarget").value = defaults.decimationTarget || 120000;
+  $("textureSize").value = defaults.textureSize || 2048;
+  $("decimationTarget").value = defaults.decimationTarget || 500000;
   $("trellisPreprocessImage").checked = defaults.trellisPreprocessImage !== false;
   $("criticIterations").value = defaults.criticIterations || 3;
   $("candidateCount").value = defaults.candidateCount || 3;

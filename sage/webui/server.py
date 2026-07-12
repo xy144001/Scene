@@ -123,11 +123,19 @@ def build_flow_plan(payload: dict[str, Any], job_id: str | None = None) -> dict[
             "--trellis-pipeline-type",
             str(payload.get("trellisPipelineType") or "512"),
             "--texture-size",
-            str(int_payload(payload, "textureSize", 1024, 256, 4096)),
+            str(int_payload(payload, "textureSize", 2048, 256, 4096)),
             "--decimation-target",
-            str(int_payload(payload, "decimationTarget", 120000, 10000, 1000000)),
+            str(int_payload(payload, "decimationTarget", 500000, 10000, 1000000)),
             "--assemble-scene",
         ]
+        if bool_payload(payload, "assetStyleConsistency", True):
+            command.append("--asset-style-consistency")
+        else:
+            command.append("--no-asset-style-consistency")
+        if bool_payload(payload, "assetStyleQaStrict", False):
+            command.append("--asset-style-qa-strict")
+        else:
+            command.append("--no-asset-style-qa-strict")
         if bool_payload(payload, "trellisPreprocessImage", True):
             command.append("--trellis-preprocess-image")
         else:
@@ -211,9 +219,9 @@ def build_flow_plan(payload: dict[str, Any], job_id: str | None = None) -> dict[
         "--trellis-pipeline-type",
         str(payload.get("trellisPipelineType") or "512"),
         "--texture-size",
-        str(int_payload(payload, "textureSize", 1024, 256, 4096)),
+        str(int_payload(payload, "textureSize", 2048, 256, 4096)),
         "--decimation-target",
-        str(int_payload(payload, "decimationTarget", 120000, 10000, 1000000)),
+        str(int_payload(payload, "decimationTarget", 500000, 10000, 1000000)),
     ]
 
     prompt = str(payload.get("prompt") or "").strip()
@@ -360,9 +368,11 @@ def config_payload() -> dict[str, Any]:
             "assetSourceRoot": str(DEFAULT_ASSET_SOURCE_ROOT),
             "trellisPipelineType": "512",
             "trellisPreprocessImage": True,
+            "assetStyleConsistency": True,
+            "assetStyleQaStrict": False,
             "roomTextureSearch": True,
-            "textureSize": 1024,
-            "decimationTarget": 120000,
+            "textureSize": 2048,
+            "decimationTarget": 500000,
             "criticIterations": 3,
             "candidateCount": 3,
             "criticAcceptScore": 0.72,

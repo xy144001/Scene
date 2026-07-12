@@ -18,6 +18,7 @@ from run_selfmade_trellis_scene import (
     _open_url_no_proxy_for_loopback,
 )
 
+from .asset_style import analyze_source_image_style
 from .io import write_json
 
 
@@ -169,6 +170,8 @@ def write_asset_source_image_qa_report(
     *,
     required: bool,
     qa_strict: bool,
+    style_spec: dict[str, Any] | None = None,
+    style_qa_strict: bool = False,
 ) -> dict[str, Any]:
     report: dict[str, Any] = {
         "schema": "tree_sage_text_asset_source_image_qa_v1",
@@ -176,9 +179,12 @@ def write_asset_source_image_qa_report(
         "source_dir": str(source_dir) if source_dir else None,
         "required": required,
         "qa_strict": qa_strict,
+        "style_consistency_enabled": bool(style_spec),
+        "style_qa_strict": style_qa_strict,
         "objects": [],
         "missing": [],
         "failed": [],
+        "style_failed": [],
         "ok": True,
     }
     if not source_dir:
@@ -192,24 +198,31 @@ def write_asset_source_image_qa_report(
             continue
         path = _asset_source_image_path(source_dir, obj)
         qa = analyze_asset_source_image(path) if path else {"exists": False, "ok": False, "warnings": ["missing_source_image"]}
+        style_qa = analyze_source_image_style(path, obj, style_spec) if path and qa.get("exists") else {"enabled": bool(style_spec), "ok": False, "warnings": ["missing_source_image_for_style_qa"]}
         item = {
             "id": str(obj.get("id")),
             "category": obj.get("category"),
             "source_image": str(path) if path else None,
             "qa": qa,
+            "style_qa": style_qa,
         }
         report["objects"].append(item)
         if not qa.get("exists"):
             report["missing"].append(str(obj.get("id")))
         elif not qa.get("ok"):
             report["failed"].append({"id": str(obj.get("id")), "warnings": qa.get("warnings", [])})
+        if style_spec and not style_qa.get("ok"):
+            report["style_failed"].append({"id": str(obj.get("id")), "warnings": style_qa.get("warnings", [])})
     required_missing = bool(report["missing"]) and required
     strict_failed = bool(report["failed"]) and qa_strict
-    report["ok"] = not required_missing and not strict_failed
+    strict_style_failed = bool(report["style_failed"]) and style_qa_strict
+    report["ok"] = not required_missing and not strict_failed and not strict_style_failed
     if required_missing:
         report["reason"] = "missing_required_asset_source_images"
     elif strict_failed:
         report["reason"] = "asset_source_image_qa_failed"
+    elif strict_style_failed:
+        report["reason"] = "asset_source_image_style_qa_failed"
     write_json(output_dir / "text_scene_asset_source_image_qa_report.json", report)
     return report
 
@@ -229,6 +242,8 @@ def generate_asset_from_source_image(
     preprocess_image: bool,
     force: bool,
     qa_strict: bool,
+    style_spec: dict[str, Any] | None = None,
+    style_qa_strict: bool = False,
 ) -> Path:
     asset_dir.mkdir(parents=True, exist_ok=True)
     object_id = str(obj["id"])
@@ -237,7 +252,8 @@ def generate_asset_from_source_image(
     if out_path.exists() and meta_path.exists() and not force:
         return out_path
     qa = analyze_asset_source_image(source_image)
-    if qa_strict and not qa.get("ok"):
+    style_qa = analyze_source_image_style(source_image, obj, style_spec)
+    if (qa_strict and not qa.get("ok")) or (style_qa_strict and style_spec and not style_qa.get("ok")):
         write_json(
             meta_path,
             {
@@ -247,9 +263,11 @@ def generate_asset_from_source_image(
                 "asset_path": str(out_path),
                 "asset_source_image": str(source_image),
                 "pre_trellis_image_qa": qa,
+                "pre_trellis_style_qa": style_qa,
             },
         )
-        raise ValueError(f"pre-Trellis source-image QA failed for {object_id}: {qa.get('warnings')}")
+        warnings = list(qa.get("warnings", [])) + list(style_qa.get("warnings", []))
+        raise ValueError(f"pre-Trellis source-image QA failed for {object_id}: {warnings}")
     request_payload = {
         "input_text": obj["asset_prompt"],
         "reference_image_path": str(source_image.resolve()),
@@ -303,6 +321,7 @@ def generate_asset_from_source_image(
                     "content_type": content_type,
                     "asset_source_image": str(source_image),
                     "pre_trellis_image_qa": qa,
+                    "pre_trellis_style_qa": style_qa,
                     "trellis_request_payload": request_payload,
                     "bridge_metadata": bridge_metadata,
                 },
@@ -319,6 +338,7 @@ def generate_asset_from_source_image(
                     "asset_path": str(out_path),
                     "asset_source_image": str(source_image),
                     "pre_trellis_image_qa": qa,
+                    "pre_trellis_style_qa": style_qa,
                     "server_error": body.decode("utf-8", errors="replace"),
                     "bridge_metadata": bridge_metadata,
                 },
@@ -343,6 +363,8 @@ def generate_asset_from_source_image(
                 preprocess_image=preprocess_image,
                 force=force,
                 qa_strict=qa_strict,
+                style_spec=style_spec,
+                style_qa_strict=style_qa_strict,
             )
         if status != 202:
             raise RuntimeError(f"Trellis2 image-source job {job_id} for {object_id} returned {status}: {body[:200]!r}")
@@ -357,6 +379,7 @@ def generate_asset_from_source_image(
             "asset_path": str(out_path),
             "asset_source_image": str(source_image),
             "pre_trellis_image_qa": qa,
+            "pre_trellis_style_qa": style_qa,
             "bridge_metadata": bridge_metadata,
         },
     )
@@ -473,6 +496,8 @@ def generate_trellis_source_image_assets(
     preprocess_image: bool,
     force: bool,
     qa_strict: bool,
+    style_spec: dict[str, Any] | None = None,
+    style_qa_strict: bool = False,
 ) -> dict[str, Any]:
     generated = []
     failures = []
@@ -498,6 +523,8 @@ def generate_trellis_source_image_assets(
                 preprocess_image=preprocess_image,
                 force=force,
                 qa_strict=qa_strict,
+                style_spec=style_spec,
+                style_qa_strict=style_qa_strict,
             )
             generated.append({"id": obj.get("id"), "source_image": str(source_image), "asset": str(asset_path)})
         except Exception as exc:
@@ -558,12 +585,15 @@ def ensure_assets_and_scene(plan: dict[str, Any], plan_path: Path, output_dir: P
             )
     elif resolved == "source_images":
         source_dir = Path(args.asset_source_image_dir) if args.asset_source_image_dir else None
+        style_spec = plan.get("asset_style_spec") if isinstance(plan.get("asset_style_spec"), dict) else None
         qa_report = write_asset_source_image_qa_report(
             plan,
             output_dir,
             source_dir,
             required=True,
             qa_strict=bool(args.asset_source_image_qa_strict),
+            style_spec=style_spec,
+            style_qa_strict=bool(getattr(args, "asset_style_qa_strict", False)),
         )
         report["steps"].append({"type": "image2_source_image_qa", "report": str(output_dir / "text_scene_asset_source_image_qa_report.json")})
         if not qa_report.get("ok"):
@@ -605,6 +635,8 @@ def ensure_assets_and_scene(plan: dict[str, Any], plan_path: Path, output_dir: P
             preprocess_image=bool(args.trellis_preprocess_image),
             force=bool(args.force_assets),
             qa_strict=bool(args.asset_source_image_qa_strict),
+            style_spec=style_spec,
+            style_qa_strict=bool(getattr(args, "asset_style_qa_strict", False)),
         )
         report["steps"].append({"type": "trellis2_from_image2_source_images", "report": str(output_dir / "trellis_source_image_asset_report.json")})
         if trellis_report.get("failures"):
