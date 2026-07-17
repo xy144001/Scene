@@ -5,9 +5,10 @@ from typing import Any
 
 
 BASE_ROOM = {
-    "bedroom": {"width": 5.2, "length": 4.2, "height": 2.7},
+    "bedroom": {"width": 5.4, "length": 4.5, "height": 2.8},
     "living_room": {"width": 6.0, "length": 4.8, "height": 2.8},
-    "study": {"width": 4.2, "length": 3.6, "height": 2.7},
+    "study": {"width": 5.3, "length": 4.5, "height": 2.8},
+    "kitchen": {"width": 5.4, "length": 4.2, "height": 2.8},
 }
 
 MATERIALS = {
@@ -287,6 +288,247 @@ OBJECT_LIBRARY: dict[str, dict[str, Any]] = {
         "layout_role": "ceiling_light",
         "description": "ceiling mounted room light",
     },
+    "bed_bench": {
+        "category": "bench",
+        "dimensions": dims(1.35, 0.42, 0.45),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "bed_end_seating",
+        "description": "upholstered bench at the foot of the bed",
+    },
+    "bedroom_side_table": {
+        "category": "side_table",
+        "dimensions": dims(0.46, 0.46, 0.5),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "bedroom_reading_side_table",
+        "description": "small round side table for a bedroom accent chair",
+    },
+    "dresser_mirror": {
+        "category": "mirror",
+        "dimensions": dims(0.72, 0.04, 0.95),
+        "placement_type": "wall",
+        "semantic_class": "wall_fixture",
+        "layout_role": "dresser_wall_mirror",
+        "description": "simple wall mirror above a dresser",
+    },
+    "storage_cabinet": {
+        "category": "cabinet",
+        "dimensions": dims(1.1, 0.42, 0.92),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "study_storage",
+        "description": "low storage cabinet with drawers for a study room",
+    },
+    "reading_chair": {
+        "category": "chair",
+        "dimensions": dims(0.78, 0.78, 0.86),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "reading_seat",
+        "description": "comfortable upholstered reading chair",
+    },
+    "study_side_table": {
+        "category": "side_table",
+        "dimensions": dims(0.52, 0.52, 0.5),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "reading_side_table",
+        "description": "small round side table for a reading chair",
+    },
+    "desk_lamp": {
+        "category": "table_lamp",
+        "dimensions": dims(0.26, 0.26, 0.46),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "task_lighting",
+        "support_id": "desk",
+        "description": "compact desk task lamp",
+    },
+    "laptop": {
+        "category": "laptop",
+        "dimensions": dims(0.42, 0.3, 0.08),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "work_tool",
+        "support_id": "desk",
+        "description": "thin open laptop computer",
+    },
+    "monitor": {
+        "category": "monitor",
+        "dimensions": dims(0.55, 0.16, 0.42),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "work_tool",
+        "support_id": "desk",
+        "description": "slim desktop monitor on a small stand",
+    },
+    "desk_books": {
+        "category": "books",
+        "dimensions": dims(0.32, 0.23, 0.12),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "desk_decor",
+        "support_id": "desk",
+        "description": "small stack of study books for a desk",
+    },
+    "pinboard": {
+        "category": "pinboard",
+        "dimensions": dims(0.72, 0.04, 0.52),
+        "placement_type": "wall",
+        "semantic_class": "wall_fixture",
+        "layout_role": "study_wall_organizer",
+        "description": "muted fabric pinboard or cork board for a study wall",
+    },
+    "base_cabinets": {
+        "category": "kitchen_cabinet",
+        "dimensions": dims(1.8, 0.62, 0.9),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "kitchen_work_wall",
+        "description": "long run of lower kitchen cabinets with a simple stone countertop",
+    },
+    "left_upper_cabinets": {
+        "category": "kitchen_cabinet",
+        "dimensions": dims(1.05, 0.36, 0.82),
+        "placement_type": "wall",
+        "semantic_class": "wall_fixture",
+        "layout_role": "kitchen_wall_storage",
+        "description": "left wall mounted upper kitchen cabinet",
+    },
+    "right_upper_cabinets": {
+        "category": "kitchen_cabinet",
+        "dimensions": dims(1.05, 0.36, 0.82),
+        "placement_type": "wall",
+        "semantic_class": "wall_fixture",
+        "layout_role": "kitchen_wall_storage",
+        "description": "right wall mounted upper kitchen cabinet",
+    },
+    "kitchen_island": {
+        "category": "kitchen_island",
+        "dimensions": dims(1.75, 0.9, 0.9),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "main_anchor",
+        "description": "rectangular kitchen island with wood base and light stone countertop",
+    },
+    "left_bar_stool": {
+        "category": "bar_stool",
+        "dimensions": dims(0.42, 0.42, 0.78),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "island_seating",
+        "description": "left counter height bar stool",
+    },
+    "right_bar_stool": {
+        "category": "bar_stool",
+        "dimensions": dims(0.42, 0.42, 0.78),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "island_seating",
+        "description": "right counter height bar stool",
+    },
+    "refrigerator": {
+        "category": "refrigerator",
+        "dimensions": dims(0.78, 0.72, 1.95),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "tall_appliance",
+        "description": "tall built-in style refrigerator with flat panel doors",
+    },
+    "stove_range": {
+        "category": "stove",
+        "dimensions": dims(0.76, 0.68, 0.92),
+        "placement_type": "floor",
+        "semantic_class": "floor_furniture",
+        "layout_role": "cooking_appliance",
+        "description": "freestanding range stove with oven and cooktop",
+    },
+    "range_hood": {
+        "category": "range_hood",
+        "dimensions": dims(0.82, 0.34, 0.55),
+        "placement_type": "wall",
+        "semantic_class": "wall_fixture",
+        "layout_role": "cooking_ventilation",
+        "description": "simple wall mounted range hood",
+    },
+    "sink_faucet": {
+        "category": "sink",
+        "dimensions": dims(0.58, 0.38, 0.34),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "water_fixture",
+        "support_id": "base_cabinets",
+        "description": "undermount kitchen sink with a curved faucet",
+    },
+    "open_shelf": {
+        "category": "open_shelf",
+        "dimensions": dims(0.95, 0.24, 0.28),
+        "placement_type": "wall",
+        "semantic_class": "wall_fixture",
+        "layout_role": "kitchen_wall_storage",
+        "description": "floating open kitchen shelf with a few neutral dishes",
+    },
+    "microwave": {
+        "category": "microwave",
+        "dimensions": dims(0.52, 0.38, 0.32),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "small_appliance",
+        "support_id": "base_cabinets",
+        "description": "compact countertop microwave",
+    },
+    "coffee_maker": {
+        "category": "coffee_maker",
+        "dimensions": dims(0.32, 0.28, 0.36),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "small_appliance",
+        "support_id": "base_cabinets",
+        "description": "compact espresso coffee maker",
+    },
+    "toaster": {
+        "category": "toaster",
+        "dimensions": dims(0.3, 0.22, 0.22),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "small_appliance",
+        "support_id": "base_cabinets",
+        "description": "small two slot toaster",
+    },
+    "fruit_bowl": {
+        "category": "fruit_bowl",
+        "dimensions": dims(0.36, 0.36, 0.18),
+        "placement_type": "support",
+        "semantic_class": "tabletop_child",
+        "layout_role": "tabletop_decor",
+        "support_id": "kitchen_island",
+        "description": "low ceramic fruit bowl with muted fruit",
+    },
+    "runner_rug": {
+        "category": "rug",
+        "dimensions": dims(2.0, 0.65, 0.025),
+        "placement_type": "floor_layer",
+        "semantic_class": "floor_covering",
+        "layout_role": "kitchen_runner",
+        "description": "thin neutral kitchen runner rug",
+    },
+    "left_pendant_light": {
+        "category": "ceiling_light",
+        "dimensions": dims(0.28, 0.28, 0.42),
+        "placement_type": "ceiling",
+        "semantic_class": "ceiling_fixture",
+        "layout_role": "island_lighting",
+        "description": "left small pendant light over kitchen island",
+    },
+    "right_pendant_light": {
+        "category": "ceiling_light",
+        "dimensions": dims(0.28, 0.28, 0.42),
+        "placement_type": "ceiling",
+        "semantic_class": "ceiling_fixture",
+        "layout_role": "island_lighting",
+        "description": "right small pendant light over kitchen island",
+    },
 }
 
 DEFAULT_OBJECTS = {
@@ -297,8 +539,16 @@ DEFAULT_OBJECTS = {
         "left_table_lamp",
         "right_table_lamp",
         "wardrobe",
+        "dresser",
+        "bed_bench",
+        "floor_lamp",
         "rug",
         "wall_art",
+        "window",
+        "left_curtain",
+        "right_curtain",
+        "plant",
+        "dresser_mirror",
         "ceiling_light",
         "door",
     ],
@@ -318,11 +568,45 @@ DEFAULT_OBJECTS = {
         "desk",
         "office_chair",
         "bookcase",
+        "storage_cabinet",
+        "reading_chair",
+        "study_side_table",
+        "floor_lamp",
         "rug",
-        "plant",
         "wall_art",
+        "pinboard",
+        "window",
+        "left_curtain",
+        "right_curtain",
+        "plant",
         "ceiling_light",
         "door",
+        "desk_lamp",
+        "laptop",
+        "monitor",
+        "desk_books",
+    ],
+    "kitchen": [
+        "base_cabinets",
+        "left_upper_cabinets",
+        "right_upper_cabinets",
+        "kitchen_island",
+        "left_bar_stool",
+        "right_bar_stool",
+        "refrigerator",
+        "stove_range",
+        "range_hood",
+        "sink_faucet",
+        "open_shelf",
+        "microwave",
+        "coffee_maker",
+        "toaster",
+        "fruit_bowl",
+        "runner_rug",
+        "window",
+        "plant",
+        "left_pendant_light",
+        "right_pendant_light",
     ],
 }
 
@@ -335,11 +619,31 @@ EXPLICIT_EXPANSION = {
     "chair": ["office_chair"],
     "accent_chair": ["accent_chair"],
     "bookcase": ["bookcase"],
+    "storage_cabinet": ["storage_cabinet"],
+    "pinboard": ["pinboard"],
+    "bench": ["bed_bench"],
+    "mirror": ["dresser_mirror"],
+    "laptop": ["laptop"],
+    "monitor": ["monitor"],
+    "desk_lamp": ["desk_lamp"],
     "side_table": ["left_side_table", "right_side_table"],
     "basket": ["woven_basket"],
     "books": ["stacked_books"],
     "ceramics": ["ceramic_vase"],
     "tv": ["tv", "tv_stand"],
+    "cabinet": ["base_cabinets", "left_upper_cabinets", "right_upper_cabinets"],
+    "countertop": ["base_cabinets"],
+    "kitchen_island": ["kitchen_island"],
+    "bar_stool": ["left_bar_stool", "right_bar_stool"],
+    "refrigerator": ["refrigerator"],
+    "sink": ["sink_faucet"],
+    "stove": ["stove_range"],
+    "range_hood": ["range_hood"],
+    "microwave": ["microwave"],
+    "toaster": ["toaster"],
+    "coffee_maker": ["coffee_maker"],
+    "fruit_bowl": ["fruit_bowl"],
+    "open_shelf": ["open_shelf"],
 }
 
 
@@ -377,6 +681,24 @@ def object_ids_for_brief(brief: dict[str, Any]) -> list[str]:
                 expansions = ["left_bookcase", "right_bookcase"]
             elif room_type == "living_room" and str(object_type) == "chair":
                 expansions = ["accent_chair"]
+            elif room_type == "study" and str(object_type) == "books":
+                expansions = ["desk_books"]
+            elif room_type == "study" and str(object_type) == "side_table":
+                expansions = ["study_side_table"]
+            elif room_type == "study" and str(object_type) == "table_lamp":
+                expansions = ["desk_lamp"]
+            elif room_type == "study" and str(object_type) == "cabinet":
+                expansions = ["storage_cabinet"]
+            elif room_type == "bedroom" and str(object_type) == "side_table":
+                expansions = ["bedroom_side_table"]
+            elif room_type == "bedroom" and str(object_type) == "chair":
+                expansions = ["accent_chair"]
+            elif room_type == "bedroom" and str(object_type) == "bench":
+                expansions = ["bed_bench"]
+            elif room_type == "bedroom" and str(object_type) == "mirror":
+                expansions = ["dresser_mirror"]
+            elif room_type == "kitchen" and str(object_type) == "rug":
+                expansions = ["runner_rug"]
             else:
                 expansions = EXPLICIT_EXPANSION.get(str(object_type), [str(object_type)])
             for object_id in expansions:
@@ -392,6 +714,14 @@ def make_object(object_id: str, style_tags: list[str], asset_strategy: str) -> d
     category = spec["category"]
     style_text = ", ".join(style_tags)
     prompt = f"{style_text} {spec['description']}, clean single 3D asset, front view, neutral background"
+    agent_semantics = {
+        "semantic_class": spec["semantic_class"],
+        "layout_role": spec["layout_role"],
+        "support_hint": spec.get("support_id", "floor"),
+        "text_scene_prior": True,
+    }
+    if object_id == "office_chair":
+        agent_semantics["visual_front_yaw_correction_degrees"] = 270.0
     return {
         "id": object_id,
         "category": category,
@@ -403,12 +733,7 @@ def make_object(object_id: str, style_tags: list[str], asset_strategy: str) -> d
         "front_yaw_offset_degrees": 0.0,
         "footprint_yaw_offset_degrees": 0.0,
         "asset_local_yaw_offset_degrees": 0.0,
-        "agent_semantics": {
-            "semantic_class": spec["semantic_class"],
-            "layout_role": spec["layout_role"],
-            "support_hint": spec.get("support_id", "floor"),
-            "text_scene_prior": True,
-        },
+        "agent_semantics": agent_semantics,
         "asset_generation": {
             "route": asset_strategy,
             "status": "planned",
